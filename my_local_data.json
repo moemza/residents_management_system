@@ -1,59 +1,46 @@
 {
-    "villages": [
-        {
-            "id": 1,
-            "name": "Thohoyandou"
-        },
-        {
-            "id": 2,
-            "name": "Sibasa"
-        },
-        {
-            "id": 3,
-            "name": "Ngwenani"
-        }
-    ],
+    "villages": [],
     "residents": [
         {
-            "full_name": "Zito",
-            "national_id": "898555564",
+            "full_name": "Mpho Mogowane",
+            "national_id": "9001015009087",
             "gender": "Male",
-            "date_of_birth": "1995-12-12",
-            "village_id": 2,
-            "stand_number": "456",
-            "contact_number_1": "0123641895",
-            "contact_number_2": "01625458954",
-            "email": null,
-            "skills": "",
+            "date_of_birth": "1990-01-01",
+            "village_id": 1,
+            "stand_number": "12A",
+            "contact_number_1": "0821234567",
+            "contact_number_2": "",
+            "email": "mpho@example.com",
+            "skills": "Python, FastAPI",
             "qualification_type": "Certificate",
-            "qualification_field": "General Education",
-            "qualification_level": "Level 4 (Certificate)",
-            "qualification_name": "Computer Literacy",
+            "qualification_field": "Information Technology",
+            "qualification_level": "NQF Level 6 (Advanced Certificate / Diploma)",
+            "qualification_name": "Software Engineering",
             "id": 1,
             "village": {
-                "id": 2,
-                "name": "Sibasa"
+                "id": 1,
+                "name": "Garagopola"
             }
         },
         {
-            "full_name": "Toks Man",
-            "national_id": "979895",
-            "gender": "male",
-            "date_of_birth": "1999-02-01",
+            "full_name": "",
+            "national_id": "",
+            "gender": "Male",
+            "date_of_birth": "1990-01-01",
             "village_id": 1,
-            "stand_number": "496",
-            "contact_number_1": "0365412896",
-            "contact_number_2": "0132564521",
+            "stand_number": "12A",
+            "contact_number_1": "0821234567",
+            "contact_number_2": null,
             "email": null,
-            "skills": "",
-            "qualification_type": "Degree",
-            "qualification_field": "Engineering",
-            "qualification_level": "Level 7 (Postgraduate Diploma)",
-            "qualification_name": "Digital Skills",
+            "skills": null,
+            "qualification_type": "Certificate",
+            "qualification_field": "Information Technology",
+            "qualification_level": "NQF Level 6 (Advanced Certificate / Diploma)",
+            "qualification_name": "Software Engineering",
             "id": 2,
             "village": {
                 "id": 1,
-                "name": "Thohoyandou"
+                "name": "Garagopola"
             }
         }
     ]

@@ -102,9 +102,9 @@ async def form_submit(
     return RedirectResponse(url="/form", status_code=303)
 
 @app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    """Redirects to the resident submission form."""
-    return RedirectResponse(url="/form")
+def homepage(request: Request):
+    """Displays the homepage."""
+    return templates.TemplateResponse("home.html", {"request": request})
 
 @app.get("/qualifications/")
 def get_qualifications():
