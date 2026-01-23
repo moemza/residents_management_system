@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
-from main import app
-from qualifications import get_all_qualifications
+from app.main import app
+from app.qualifications import get_all_qualifications
 
 client = TestClient(app)
 
