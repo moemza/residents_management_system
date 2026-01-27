@@ -29,42 +29,31 @@
         <div class="row g-2 mb-3">
             <div class="col-md-3">
                 <label class="form-label">First Name</label>
-                <input type="text" name="first_name" class="form-control"
-                       value="{{ resident.first_name }}" required>
+                <input type="hidden" name="first_name" value="{{ resident.first_name }}">
+                <input type="text" class="form-control" value="{{ resident.first_name }}" readonly>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Last Name</label>
-                <input type="text" name="last_name" class="form-control"
-                       value="{{ resident.last_name }}" required>
+                <input type="hidden" name="last_name" value="{{ resident.last_name }}">
+                <input type="text" class="form-control" value="{{ resident.last_name }}" readonly>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Date of Birth</label>
-                <input type="text" name="dob" class="form-control"
-                       value="{{ resident.dob }}" placeholder="YYYY-MM-DD" required>
+                <input type="hidden" name="dob" value="{{ resident.dob }}">
+                <input type="text" class="form-control" value="{{ resident.dob }}" readonly>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Gender</label>
-                <select name="gender" class="form-select" required>
-                    <option value="">Select Gender</option>
-                    <option value="Male" {% if resident.gender == 'Male' %}selected{% endif %}>Male</option>
-                    <option value="Female" {% if resident.gender == 'Female' %}selected{% endif %}>Female</option>
-                    <option value="Other" {% if resident.gender == 'Other' %}selected{% endif %}>Other</option>
-                </select>
+                <input type="hidden" name="gender" value="{{ resident.gender }}">
+                <input type="text" class="form-control" value="{{ resident.gender }}" readonly>
             </div>
         </div>
 
         <div class="row g-2 mb-3">
             <div class="col-md-4">
                 <label class="form-label">Village</label>
-                <select name="village" class="form-select" required>
-                    <option value="">Select Village</option>
-                    {% for village in villages %}
-                        <option value="{{ village }}"
-                            {% if resident.village == village %}selected{% endif %}>
-                            {{ village }}
-                        </option>
-                    {% endfor %}
-                </select>
+                <input type="hidden" name="village" value="{{ resident.village }}">
+                <input type="text" class="form-control" value="{{ resident.village }}" readonly>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Cellphone No</label>

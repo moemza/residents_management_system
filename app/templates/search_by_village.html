@@ -27,7 +27,10 @@
             {% for resident in results %}
               <li class="list-group-item d-flex justify-content-between align-items-center">
                 {{ resident.first_name }} {{ resident.last_name }} - {{ resident.village }}
-                <a href="/edit-resident/{{ resident.id }}" class="btn btn-warning btn-sm">Edit</a>
+                <div>
+                    <a href="/view-resident/{{ resident.id }}" class="btn btn-info btn-sm me-1">View</a>
+                    <a href="/edit-resident/{{ resident.id }}" class="btn btn-warning btn-sm">Edit</a>
+                </div>
               </li>
             {% endfor %}
           </ul>

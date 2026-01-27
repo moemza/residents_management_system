@@ -145,3 +145,18 @@ async def add_resident(
     db.refresh(resident)
 
     return RedirectResponse(url="/", status_code=303)
+
+
+@router.get("/view-resident/{resident_id}", response_class=HTMLResponse)
+async def view_resident(request: Request, resident_id: int, db: Session = Depends(get_db)):
+    resident = db.query(Resident).filter(Resident.id == resident_id).first()
+    if not resident:
+        return RedirectResponse(url="/", status_code=303)
+    
+    return templates.TemplateResponse(
+        "view_resident.html",
+        {
+            "request": request,
+            "resident": resident
+        }
+    )
