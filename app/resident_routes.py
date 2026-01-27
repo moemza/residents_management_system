@@ -1,51 +1,16 @@
-from fastapi import APIRouter, Request, Depends, Form
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
-from .database import get_db
-from .models import Resident, Qualification, Experience, Skill
-from .schemas import ResidentCreate
-from fastapi.templating import Jinja2Templates
-from .qualifications import get_all_qualifications
-from .villages import get_all_villages
 from starlette.responses import RedirectResponse
 from datetime import datetime
-
-router = APIRouter()
-from fastapi import Request
-from fastapi.responses import HTMLResponse
+from .database import get_db
+from .models import Resident, Qualification, Experience, Skill
+from .qualifications import get_all_qualifications
+from .villages import get_all_villages
 from fastapi.templating import Jinja2Templates
 
+router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
-
-@router.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
-
-@router.get("/search_resident", response_class=HTMLResponse)
-async def search_resident_form(request: Request):
-    return templates.TemplateResponse("search_resident.html", {"request": request, "results": None, "message": None})
-
-@router.get("/search-resident", response_class=HTMLResponse)
-async def search_resident(request: Request, query: str = "", db: Session = Depends(get_db)):
-    if not query:
-        return templates.TemplateResponse("search_resident.html", {
-            "request": request,
-            "results": None,
-            "message": "Please enter a search term."
-        })
-    
-    # Basic search logic - you can expand this
-    residents = db.query(Resident).filter(
-        Resident.first_name.ilike(f"%{query}%") | 
-        Resident.last_name.ilike(f"%{query}%") |
-        Resident.cellphone_no.ilike(f"%{query}%")
-    ).all()
-    
-    return templates.TemplateResponse("search_resident.html", {
-        "request": request,
-        "results": residents,
-        "message": None
-    })
 
 @router.get("/add_resident", response_class=HTMLResponse)
 async def add_resident_form(request: Request):
@@ -59,10 +24,6 @@ async def add_resident_form(request: Request):
             "villages": villages
         }
     )
-
-@router.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
 
 @router.get("/edit-resident/{resident_id}", response_class=HTMLResponse)
 async def edit_resident_form(request: Request, resident_id: int, db: Session = Depends(get_db)):
@@ -114,7 +75,6 @@ async def edit_resident(
     
     return RedirectResponse(url="/", status_code=303)
 
-
 @router.post("/add_resident")
 async def add_resident(
     request: Request,
@@ -138,12 +98,12 @@ async def add_resident(
     types = form.getlist("education_type[]")
     levels = form.getlist("education_level[]")
     years = form.getlist("education_year[]")
-    qualifications = [  # <-- renamed from 'education'
+    qualifications = [
         Qualification(
             institution=institutions[i],
             name=names[i],
-            type=types[i],          # <-- change from 'qualification_type'
-            level=levels[i],        # <-- change from 'qualification_level'
+            type=types[i],
+            level=levels[i],
             year=years[i]
         )
         for i in range(len(institutions))
@@ -153,7 +113,7 @@ async def add_resident(
     companies = form.getlist("company[]")
     positions = form.getlist("position[]")
     years_exp = form.getlist("years[]")
-    experiences = [  # <-- renamed from 'experience'
+    experiences = [
         Experience(
             company=companies[i],
             position=positions[i],

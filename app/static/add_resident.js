@@ -20,10 +20,11 @@ function deleteEducationRow(btn) {
 // Add education row
 function addEducation() {
     const section = document.getElementById("education-section");
-    const rows = section.querySelectorAll(".education-row");
-    let lastRow = rows[rows.length - 1];
-
-    // If there are no rows, create a new blank row
+    // Get only visible education rows (exclude hidden ones)
+    const rows = Array.from(section.querySelectorAll(".education-row"))
+        .filter(row => row.style.display !== 'none');
+    
+    // If there are no visible rows, create the first row without validation
     if (rows.length === 0) {
         const newRow = document.createElement("div");
         newRow.className = "row g-2 mb-3 education-row";
@@ -58,7 +59,8 @@ function addEducation() {
         return;
     }
 
-    // Otherwise, validate last row before adding
+    // Otherwise, validate last visible row before adding
+    let lastRow = rows[rows.length - 1];
     let allFilled = true;
     lastRow.querySelectorAll("input, select").forEach(el => {
         if (!el.value || el.value.trim() === "") {

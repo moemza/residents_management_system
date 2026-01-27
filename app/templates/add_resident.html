@@ -14,7 +14,10 @@
 <body>
 <div class="container mt-5">
 
-<h3 class="mb-4 text-center">Add New Resident</h3>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="mb-0">Add New Resident</h3>
+  <a href="/" class="btn btn-outline-primary">Home</a>
+</div>
 
 <form method="post" action="/add_resident">
 
@@ -175,3 +178,24 @@
 <script src="/static/add_resident.js"></script>
 </body>
 </html>
+
+
+<select id="search_type" name="search_type" class="form-control">
+  <option value="name">Name or Surname</option>
+  <option value="village">Village</option>
+  <option value="qualification">Qualification</option>
+  <option value="skill">Skill</option>
+</select>
+
+<div class="form-group" id="text_query_group">
+  <label for="query">Enter search term:</label>
+  <input type="text" id="query" name="query" class="form-control">
+</div>
+<div class="form-group" id="village_query_group" style="display:none;">
+  <label for="village_query">Select village:</label>
+  <select id="village_query" name="query" class="form-control">
+    {% for village in villages %}
+      <option value="{{ village }}">{{ village }}</option>
+    {% endfor %}
+  </select>
+</div>
