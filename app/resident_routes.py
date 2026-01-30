@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from starlette.responses import RedirectResponse
 from datetime import datetime
-from .database import get_db
+from .database import backup_database, get_db
 from .models import Resident, Qualification, Experience, Skill
 from .qualifications import get_all_qualifications
 from .villages import get_all_villages
@@ -147,6 +147,8 @@ async def edit_resident(
     db.commit()
     db.refresh(resident)
 
+    backup_database()
+
     return RedirectResponse(url="/", status_code=303)
 
 @router.post("/add_resident")
@@ -166,6 +168,8 @@ async def add_resident(
     db.add(resident)
     db.commit()
     db.refresh(resident)
+
+    backup_database()
 
     return RedirectResponse(url="/", status_code=303)
 
