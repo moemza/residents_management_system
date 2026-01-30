@@ -44,44 +44,11 @@ async def edit_resident_form(request: Request, resident_id: int, db: Session = D
         }
     )
 
-@router.post("/edit-resident/{resident_id}")
-async def edit_resident(
-    request: Request,
-    resident_id: int,
-    db: Session = Depends(get_db)
-):
-    form = await request.form()
-    resident = db.query(Resident).filter(Resident.id == resident_id).first()
-    if not resident:
-        return RedirectResponse(url="/", status_code=303)
-    
-    # Update resident fields
-    resident.first_name = form.get("first_name")
-    resident.last_name = form.get("last_name")
-    resident.gender = form.get("gender")
-    resident.village = form.get("village")
-    dob_str = form.get("dob")
-    if dob_str:
-        resident.dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
-    resident.cellphone_no = form.get("cellphone_no")
-    resident.cellphone_no2 = form.get("cellphone_no2")
-    resident.email = form.get("email")
-    
-    # Note: For simplicity, we're not updating qualifications/experiences/skills here
-    # You would need more complex logic to handle those relationships
-    
-    db.commit()
-    db.refresh(resident)
-    
-    return RedirectResponse(url="/", status_code=303)
+def process_resident_form_data(form, resident_id=None):
+    from .models import Qualification, Experience, Skill
+    from datetime import datetime
 
-@router.post("/add_resident")
-async def add_resident(
-    request: Request,
-    db: Session = Depends(get_db)
-):
-    form = await request.form()
-    # Extract personal details
+    # Personal details
     first_name = form.get("first_name")
     last_name = form.get("last_name")
     gender = form.get("gender")
@@ -92,7 +59,7 @@ async def add_resident(
     cellphone_no2 = form.get("cellphone_no2")
     email = form.get("email")
 
-    # Extract education
+    # Education
     institutions = form.getlist("education_institution[]")
     names = form.getlist("education_name[]")
     types = form.getlist("education_type[]")
@@ -104,12 +71,13 @@ async def add_resident(
             name=names[i],
             type=types[i],
             level=levels[i],
-            year=years[i]
+            year=years[i],
+            resident_id=resident_id
         )
-        for i in range(len(institutions))
+        for i in range(len(institutions)) if institutions[i].strip()
     ]
 
-    # Extract experience
+    # Experience
     companies = form.getlist("company[]")
     positions = form.getlist("position[]")
     years_exp = form.getlist("years[]")
@@ -117,25 +85,80 @@ async def add_resident(
         Experience(
             company=companies[i],
             position=positions[i],
-            years=years_exp[i]
+            years=years_exp[i],
+            resident_id=resident_id
         )
-        for i in range(len(companies))
+        for i in range(len(companies)) if companies[i].strip()
     ]
 
-    # Extract skills
+    # Skills
     skills_list = form.getlist("skills[]")
-    skills = [Skill(name=s) for s in skills_list]
+    skills = [
+        Skill(
+            name=s,
+            resident_id=resident_id
+        )
+        for s in skills_list if s.strip()
+    ]
 
-    # Create resident
+    resident_data = {
+        "first_name": first_name,
+        "last_name": last_name,
+        "dob": dob,
+        "gender": gender,
+        "village": village,
+        "cellphone_no": cellphone_no,
+        "cellphone_no2": cellphone_no2,
+        "email": email,
+    }
+    return resident_data, qualifications, experiences, skills
+
+@router.post("/edit-resident/{resident_id}")
+async def edit_resident(
+    request: Request,
+    resident_id: int,
+    db: Session = Depends(get_db)
+):
+    form = await request.form()
+    resident = db.query(Resident).filter(Resident.id == resident_id).first()
+    if not resident:
+        return RedirectResponse(url="/", status_code=303)
+
+    # Remove old related records
+    db.query(Qualification).filter(Qualification.resident_id == resident_id).delete()
+    db.query(Experience).filter(Experience.resident_id == resident_id).delete()
+    db.query(Skill).filter(Skill.resident_id == resident_id).delete()
+
+    # Process new data
+    resident_data, qualifications, experiences, skills = process_resident_form_data(form, resident_id)
+
+    # Update resident fields
+    for key, value in resident_data.items():
+        setattr(resident, key, value)
+
+    # Add new related records
+    for q in qualifications:
+        db.add(q)
+    for e in experiences:
+        db.add(e)
+    for s in skills:
+        db.add(s)
+
+    db.commit()
+    db.refresh(resident)
+
+    return RedirectResponse(url="/", status_code=303)
+
+@router.post("/add_resident")
+async def add_resident(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    form = await request.form()
+    resident_data, qualifications, experiences, skills = process_resident_form_data(form)
+
     resident = Resident(
-        first_name=first_name,
-        last_name=last_name,
-        dob=dob,
-        gender=gender,
-        village=village,
-        cellphone_no=cellphone_no,
-        cellphone_no2=cellphone_no2,
-        email=email,
+        **resident_data,
         qualifications=qualifications,
         experiences=experiences,
         skills=skills
@@ -145,7 +168,6 @@ async def add_resident(
     db.refresh(resident)
 
     return RedirectResponse(url="/", status_code=303)
-
 
 @router.get("/view-resident/{resident_id}", response_class=HTMLResponse)
 async def view_resident(request: Request, resident_id: int, db: Session = Depends(get_db)):
