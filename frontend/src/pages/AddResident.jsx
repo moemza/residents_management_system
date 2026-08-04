@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { getVillages, getQualifications, createResident } from "../api/residents";
+import { GENDERS } from "../constants";
 import EducationSection from "../components/EducationSection";
 import ExperienceSection from "../components/ExperienceSection";
 import SkillsSection from "../components/SkillsSection";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
-
-const GENDERS = ["Male", "Female", "Other"];
 
 export default function AddResident() {
   const navigate = useNavigate();
@@ -29,7 +28,7 @@ export default function AddResident() {
   useEffect(() => {
     getVillages().then(setVillages).catch(() => showToast("Failed to load villages", "error"));
     getQualifications().then(setQualificationData).catch(() => showToast("Failed to load qualifications", "error"));
-  }, []);
+  }, [showToast]);
 
   const set = (field) => (e) => {
     setForm((p) => ({ ...p, [field]: e.target.value }));

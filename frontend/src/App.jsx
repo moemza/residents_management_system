@@ -17,7 +17,7 @@ export default function App() {
       showToast(location.state.success, "success");
       window.history.replaceState({}, "");
     }
-  }, [location]);
+  }, [location, showToast]);
 
   return (
     <>

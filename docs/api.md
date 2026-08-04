@@ -99,7 +99,7 @@ Creates a new resident.
 
 **Validation**
 - `first_name`, `last_name`, `gender`, `village`, `cellphone_no` — required, sanitized
-- `dob` — required, ISO 8601 date (`YYYY-MM-DD`)
+- `dob` — required, ISO 8601 date (`YYYY-MM-DD`), cannot be a future date
 - `email` — optional, must be a valid email if provided
 - `cellphone_no2` — optional, sanitized if provided
 

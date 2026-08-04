@@ -2,7 +2,7 @@ import html
 from datetime import date
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
 from .database import get_db, backup_database
@@ -39,9 +39,16 @@ class ResidentIn(BaseModel):
     cellphone_no: str
     cellphone_no2: Optional[str] = None
     email: Optional[EmailStr] = None
-    qualifications: List[QualificationIn] = []
-    experiences: List[ExperienceIn] = []
-    skills: List[SkillIn] = []
+    qualifications: List[QualificationIn] = Field(default_factory=list)
+    experiences: List[ExperienceIn] = Field(default_factory=list)
+    skills: List[SkillIn] = Field(default_factory=list)
+
+    @field_validator("dob", mode="after")
+    @classmethod
+    def dob_not_in_future(cls, v):
+        if v and v > date.today():
+            raise ValueError("Date of birth cannot be in the future")
+        return v
 
     @field_validator("first_name", "last_name", "gender", "village", "cellphone_no", mode="before")
     @classmethod

@@ -6,4 +6,5 @@ sqlalchemy
 
 # dev / test
 pytest
+pytest-cov
 httpx2

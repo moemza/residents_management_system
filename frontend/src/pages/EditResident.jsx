@@ -7,8 +7,6 @@ import SkillsSection from "../components/SkillsSection";
 import Toast from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 
-const GENDERS = ["Male", "Female", "Other"];
-
 export default function EditResident() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -49,7 +47,7 @@ export default function EditResident() {
       })
       .catch(() => showToast("Failed to load resident data.", "error"))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, showToast]);
 
   const set = (field) => (e) => {
     setForm((p) => ({ ...p, [field]: e.target.value }));

@@ -47,11 +47,15 @@ The frontend is a **React (Vite)** single-page application using **Bootstrap 5**
 │   ├── architecture.md    # System architecture overview
 │   └── user-stories/      # Feature user stories
 ├── tests/
-│   ├── test_form_submission.py  # Resident CRUD integration tests
-│   ├── test_health.py           # API health and schema tests
-│   ├── test_qualifications.py   # Qualifications endpoint tests
-│   ├── test_validation.py       # Input validation tests
-│   └── test_villages.py         # Villages endpoint tests
+│   ├── conftest.py                          # Shared DB fixture and base payload
+│   ├── test_form_submission.py              # Resident CRUD integration tests
+│   ├── test_health.py                       # API health and schema tests
+│   ├── test_qualifications.py               # Qualifications endpoint tests
+│   ├── test_validation.py                   # Input validation tests
+│   ├── test_villages.py                     # Villages endpoint tests
+│   ├── test_integration_add_resident.py     # Add Resident user stories (US-01–07)
+│   ├── test_integration_edit_resident.py    # Edit Resident user stories (US-ER-01–06)
+│   └── test_integration_search_resident.py  # Search Resident user stories (US-SR-01–08)
 ├── requirements.txt
 ├── Dockerfile
 └── README.md
@@ -106,6 +110,36 @@ React app: [http://localhost:5173](http://localhost:5173)
 pytest tests/ -v
 ```
 
+Run a specific test file:
+
+```bash
+pytest tests/test_integration_add_resident.py -v
+pytest tests/test_integration_edit_resident.py -v
+pytest tests/test_integration_search_resident.py -v
+```
+
+Run only integration tests:
+
+```bash
+pytest tests/ -v -k "integration"
+```
+
+Run with coverage:
+
+```bash
+# Terminal report showing missed lines
+pytest tests/ --cov=app --cov-report=term-missing
+
+# HTML report (open htmlcov/index.html in a browser)
+pytest tests/ --cov=app --cov-report=html
+```
+
+Run with a short summary of failures only:
+
+```bash
+pytest tests/ -q
+```
+
 ---
 
 ## Docker
@@ -133,6 +167,7 @@ See [docs/architecture.md](docs/architecture.md) for a system overview.
 
 - All string inputs sanitized with `html.escape()` via Pydantic validators before persistence
 - Email validated by Pydantic `EmailStr`
+- Date of birth validated — future dates are rejected with `422`
 - CORS restricted to `http://localhost:5173` — update `app/main.py` for production
 - No `alert()` / `confirm()` / `prompt()` in the frontend
 
