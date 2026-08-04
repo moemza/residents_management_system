@@ -1,15 +1,30 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { getResident } from "../api/residents";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { getResident, deleteResident } from "../api/residents";
 
 export default function ViewResident() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [resident, setResident] = useState(null);
   const [error, setError] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     getResident(id).then(setResident).catch(() => setError("Resident not found."));
   }, [id]);
+
+  const handleDelete = async () => {
+    if (!window.confirm) return; // guard — should never be called directly
+    setDeleting(true);
+    try {
+      await deleteResident(id);
+      navigate("/", { state: { success: "Resident deleted successfully." } });
+    } catch {
+      setError("Failed to delete resident. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (error) return <div className="container mt-5"><div className="alert alert-danger">{error}</div><Link to="/" className="btn btn-secondary">Home</Link></div>;
   if (!resident) return <div className="container mt-5 text-center"><div className="spinner-border" /></div>;
@@ -71,6 +86,13 @@ export default function ViewResident() {
         </div>
         <div className="card-footer">
           <Link to={`/edit-resident/${resident.id}`} className="btn btn-warning me-2">Edit</Link>
+          <button
+            className="btn btn-danger me-2"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? "Deleting…" : "Delete"}
+          </button>
           <Link to="/" className="btn btn-secondary">Back to Home</Link>
         </div>
       </div>

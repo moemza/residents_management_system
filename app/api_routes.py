@@ -22,13 +22,28 @@ class QualificationIn(BaseModel):
     level: str
     year: str
 
+    @field_validator("institution", "name", "type", "level", "year", mode="before")
+    @classmethod
+    def sanitize(cls, v):
+        return html.escape(str(v).strip()) if v else v
+
 class ExperienceIn(BaseModel):
     company: str
     position: str
     years: str
 
+    @field_validator("company", "position", "years", mode="before")
+    @classmethod
+    def sanitize(cls, v):
+        return html.escape(str(v).strip()) if v else v
+
 class SkillIn(BaseModel):
     name: str
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def sanitize(cls, v):
+        return html.escape(str(v).strip()) if v else v
 
 class ResidentIn(BaseModel):
     first_name: str
@@ -53,12 +68,17 @@ class ResidentIn(BaseModel):
     @field_validator("first_name", "last_name", "gender", "village", "cellphone_no", mode="before")
     @classmethod
     def sanitize_str(cls, v):
-        return html.escape(str(v).strip()) if v else v
+        sanitized = html.escape(str(v).strip()) if v else v
+        if not sanitized or not sanitized.strip():
+            raise ValueError("Field cannot be empty or whitespace")
+        return sanitized
 
-    @field_validator("cellphone_no2", mode="before")
+    @field_validator("cellphone_no2", "email", mode="before")
     @classmethod
     def sanitize_optional_str(cls, v):
-        return html.escape(str(v).strip()) if v else None
+        if not v or not str(v).strip():
+            return None
+        return html.escape(str(v).strip())
 
 
 def _resident_to_dict(r: Resident) -> dict:
@@ -114,24 +134,28 @@ def get_resident(resident_id: int, db: Session = Depends(get_db)):
 
 @router.post("/residents", status_code=201)
 def create_resident(payload: ResidentIn, db: Session = Depends(get_db)):
-    resident = Resident(
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        dob=payload.dob,
-        gender=payload.gender,
-        village=payload.village,
-        cellphone_no=payload.cellphone_no,
-        cellphone_no2=payload.cellphone_no2,
-        email=payload.email,
-        qualifications=[Qualification(**q.model_dump()) for q in payload.qualifications],
-        experiences=[Experience(**e.model_dump()) for e in payload.experiences],
-        skills=[Skill(**s.model_dump()) for s in payload.skills],
-    )
-    db.add(resident)
-    db.commit()
-    db.refresh(resident)
-    backup_database()
-    return _resident_to_dict(resident)
+    try:
+        resident = Resident(
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            dob=payload.dob,
+            gender=payload.gender,
+            village=payload.village,
+            cellphone_no=payload.cellphone_no,
+            cellphone_no2=payload.cellphone_no2,
+            email=payload.email,
+            qualifications=[Qualification(**q.model_dump()) for q in payload.qualifications],
+            experiences=[Experience(**e.model_dump()) for e in payload.experiences],
+            skills=[Skill(**s.model_dump()) for s in payload.skills],
+        )
+        db.add(resident)
+        db.commit()
+        db.refresh(resident)
+        backup_database()
+        return _resident_to_dict(resident)
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.put("/residents/{resident_id}")
@@ -139,25 +163,28 @@ def update_resident(resident_id: int, payload: ResidentIn, db: Session = Depends
     resident = db.query(Resident).filter(Resident.id == resident_id).first()
     if not resident:
         raise HTTPException(status_code=404, detail="Resident not found")
+    try:
+        db.query(Qualification).filter(Qualification.resident_id == resident_id).delete()
+        db.query(Experience).filter(Experience.resident_id == resident_id).delete()
+        db.query(Skill).filter(Skill.resident_id == resident_id).delete()
 
-    db.query(Qualification).filter(Qualification.resident_id == resident_id).delete()
-    db.query(Experience).filter(Experience.resident_id == resident_id).delete()
-    db.query(Skill).filter(Skill.resident_id == resident_id).delete()
+        for key, value in payload.model_dump(exclude={"qualifications", "experiences", "skills"}).items():
+            setattr(resident, key, value)
 
-    for key, value in payload.model_dump(exclude={"qualifications", "experiences", "skills"}).items():
-        setattr(resident, key, value)
+        for q in payload.qualifications:
+            db.add(Qualification(**q.model_dump(), resident_id=resident_id))
+        for e in payload.experiences:
+            db.add(Experience(**e.model_dump(), resident_id=resident_id))
+        for s in payload.skills:
+            db.add(Skill(**s.model_dump(), resident_id=resident_id))
 
-    for q in payload.qualifications:
-        db.add(Qualification(**q.model_dump(), resident_id=resident_id))
-    for e in payload.experiences:
-        db.add(Experience(**e.model_dump(), resident_id=resident_id))
-    for s in payload.skills:
-        db.add(Skill(**s.model_dump(), resident_id=resident_id))
-
-    db.commit()
-    db.refresh(resident)
-    backup_database()
-    return _resident_to_dict(resident)
+        db.commit()
+        db.refresh(resident)
+        backup_database()
+        return _resident_to_dict(resident)
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.delete("/residents/{resident_id}", status_code=204)
@@ -165,9 +192,13 @@ def delete_resident(resident_id: int, db: Session = Depends(get_db)):
     resident = db.query(Resident).filter(Resident.id == resident_id).first()
     if not resident:
         raise HTTPException(status_code=404, detail="Resident not found")
-    db.delete(resident)
-    db.commit()
-    backup_database()
+    try:
+        db.delete(resident)
+        db.commit()
+        backup_database()
+    except Exception:
+        db.rollback()
+        raise
 
 
 # ── Search ─────────────────────────────────────────────────────────────────────
