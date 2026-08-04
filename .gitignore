@@ -1,19 +1,30 @@
 # Python
 .venv/
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 .coverage
 htmlcov/
 
 # Database
+database/residents.db
 database/backups/
 database/test_residents.db
 
 # Node
 frontend/node_modules/
 frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+*.log
+package-lock.json
 
 # Env
 .env
 *.env
+
+# IDE / editor
+.marscode/
+.vscode/
+.idea/

@@ -1,11 +1,14 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
-import os
-import shutil
-import pathlib
-from datetime import datetime
 import glob
+import logging
+import os
+import pathlib
+import shutil
+from datetime import datetime
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
 
@@ -19,7 +22,6 @@ def create_tables():
     Base.metadata.create_all(bind=engine)
 
 def get_db():
-    from sqlalchemy.orm import Session
     db = SessionLocal()
     try:
         yield db
@@ -33,21 +35,20 @@ def backup_database():
         os.makedirs(backup_dir, exist_ok=True)
         source_db = BASE_DIR / "database" / "residents.db"
         if not os.path.exists(source_db):
-            print(f"Source database not found: {source_db}")
+            logger.warning("Source database not found: %s", source_db)
             return False
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_file = os.path.join(backup_dir, f"residents_backup_{timestamp}.db")
         shutil.copy2(source_db, backup_file)
-        print(f"Database backup created: {backup_file}")
+        logger.info("Database backup created: %s", backup_file)
         backup_files = glob.glob(os.path.join(backup_dir, "residents_backup_*.db"))
         backup_files.sort(key=os.path.getmtime)
-        if len(backup_files) > 10:
-            for old_backup in backup_files[:-10]:
-                os.remove(old_backup)
-                print(f"Removed old backup: {old_backup}")
+        for old_backup in backup_files[:-10]:
+            os.remove(old_backup)
+            logger.info("Removed old backup: %s", old_backup)
         return True
-    except Exception as e:
-        print(f"Backup failed: {e}")
+    except OSError as e:
+        logger.error("Backup failed: %s", e)
         return False
 
 if __name__ == "__main__":

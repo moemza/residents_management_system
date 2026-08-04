@@ -20,8 +20,10 @@ export default function SearchResident() {
   const [qualificationFields, setQualificationFields] = useState([]);
 
   useEffect(() => {
-    getVillages().then(setVillages);
-    getQualifications().then((q) => setQualificationFields(q.fields || []));
+    getVillages().then(setVillages).catch(() => setMessage("Failed to load villages."));
+    getQualifications()
+      .then((q) => setQualificationFields(q.fields || []))
+      .catch(() => setMessage("Failed to load qualifications."));
   }, []);
 
   const handleSearch = async (e) => {

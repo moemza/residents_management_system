@@ -25,7 +25,7 @@ The system follows a standard client-server architecture with a clear separation
 |------|---------------|
 | `main.py` | FastAPI app instance, CORS middleware, lifespan (DB init), router registration |
 | `api_routes.py` | All REST endpoints — residents CRUD, search, villages, qualifications |
-| `models.py` | SQLAlchemy ORM models: `Resident`, `Qualification`, `Experience`, `Skill`, `Village` |
+| `models.py` | SQLAlchemy ORM models: `Resident`, `Qualification`, `Experience`, `Skill` |
 | `database.py` | Engine setup, session factory, `get_db` dependency, `backup_database()` |
 | `qualifications.py` | Static reference data: types, fields, levels, names |
 | `villages.py` | Static village list |
@@ -103,13 +103,53 @@ All child records use `cascade="all, delete-orphan"` so deleting a resident remo
 
 - **XSS prevention** — all string inputs are sanitized with `html.escape()` in Pydantic `@field_validator` before any data reaches the database
 - **Email validation** — Pydantic `EmailStr` rejects malformed email addresses at the API layer
+- **Future DOB rejection** — `dob` is validated to not exceed today's date; returns `422` if it does
 - **CORS** — restricted to `http://localhost:5173`; update `allow_origins` in `app/main.py` before deploying
 - **No raw HTML injection** — the React frontend uses JSX which escapes all values by default; no `dangerouslySetInnerHTML` is used anywhere
 - **No browser dialogs** — all user feedback uses the `Toast` component
 
+## Tests (`tests/`)
+
+| File | Covers |
+|------|--------|
+| `conftest.py` | Shared in-memory DB fixture and base resident payload |
+| `test_health.py` | `/docs` availability, OpenAPI schema title |
+| `test_villages.py` | `GET /api/villages` shape and content |
+| `test_qualifications.py` | `GET /api/qualifications` shape and content |
+| `test_validation.py` | Required fields, email format, date format, empty search |
+| `test_form_submission.py` | Full resident CRUD via the API |
+| `test_integration_add_resident.py` | Add Resident user stories US-01 – US-07 |
+| `test_integration_edit_resident.py` | Edit Resident user stories US-ER-01 – US-ER-06 |
+| `test_integration_search_resident.py` | Search Resident user stories US-SR-01 – US-SR-08 |
+
+All tests use an isolated SQLite test database (`database/test_residents.db`) that is created and torn down per test via the `client` fixture in `conftest.py`.
+
+### Commands
+
+```bash
+# Run the full suite
+pytest tests/ -v
+
+# Run only integration tests (user-story coverage)
+pytest tests/ -v -k "integration"
+
+# Run a single file
+pytest tests/test_integration_add_resident.py -v
+pytest tests/test_integration_edit_resident.py -v
+pytest tests/test_integration_search_resident.py -v
+
+# Run with coverage (terminal report)
+pytest tests/ --cov=app --cov-report=term-missing
+
+# Run with coverage (HTML report — open htmlcov/index.html)
+pytest tests/ --cov=app --cov-report=html
+
+# Short pass/fail summary
+pytest tests/ -q
+```
+
 ---
 
-## Adding a New Village or Qualification
 
 - Villages: edit the `VILLAGES` list in `app/villages.py`
 - Qualification types/levels/fields/names: edit the corresponding constants in `app/qualifications.py`

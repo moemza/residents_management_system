@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import Home from "./pages/Home";
 import AddResident from "./pages/AddResident";
@@ -17,7 +17,7 @@ export default function App() {
       showToast(location.state.success, "success");
       window.history.replaceState({}, "");
     }
-  }, [location]);
+  }, [location, showToast]);
 
   return (
     <>
@@ -28,6 +28,12 @@ export default function App() {
         <Route path="/edit-resident/:id" element={<EditResident />} />
         <Route path="/view-resident/:id" element={<ViewResident />} />
         <Route path="/search" element={<SearchResident />} />
+        <Route path="*" element={
+          <div className="container mt-5 text-center">
+            <h3>404 — Page not found</h3>
+            <Link to="/" className="btn btn-primary mt-3">Go Home</Link>
+          </div>
+        } />
       </Routes>
     </>
   );
