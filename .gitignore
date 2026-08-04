@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.coverage
+htmlcov/
+
+# Database
+database/backups/
+database/test_residents.db
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Env
+.env
+*.env

@@ -2,134 +2,103 @@
 
 ## Epic: Search and Filter Residents
 
-**As a system user (admin or data capturer),**  
-I want to search for residents using names or surnames and apply filters,  
-So that I can quickly and accurately find resident records that meet specific requirements.
+**As a system user,**  
+I want to search for residents using different criteria,  
+so that I can quickly locate specific resident records.
 
 ---
 
-## Search Criteria
+## Search Type Selection
 
-### US-SR-01: Search by name or surname
+### US-SR-01: Select a search type
 **As a user**  
-I want to search for a resident using a name or surname  
-So that I can locate residents using basic identifying information.
+I want to choose how I search (by name, village, qualification, or skill)  
+so that I can find residents using the most relevant criteria.
 
 **Acceptance Criteria**
-- Search input accepts first name or surname
-- Search input is required
-- Partial matches are allowed
-- Search is case-insensitive
+- A dropdown lets the user select: Name or Surname, Village, Qualification, Skill
+- Changing the search type resets the query input and clears results
+- The selected type is reflected in the URL query string (`?type=name`)
 
 ---
 
-### US-SR-02: Validate allowed search inputs
+## Search Input
+
+### US-SR-02: Search by name
 **As a user**  
-I want the system to restrict searches to valid criteria  
-So that search results are accurate and meaningful.
+I want to type a name or surname into a text input  
+so that I can find residents by their name.
 
 **Acceptance Criteria**
-- Search does not accept empty input
-- Search rejects unsupported identifiers if entered alone
-- User is informed when input does not meet search requirements
+- Free-text input is shown when search type is `name` or `skill`
+- Partial matches are returned (case-insensitive)
 
 ---
 
-## Filtering Functionality
-
-### US-SR-03: Filter search results
+### US-SR-03: Search by village
 **As a user**  
-I want to filter resident search results  
-So that I can narrow down results based on specific requirements.
+I want to select a village from a dropdown  
+so that I can view all residents from a specific location.
 
 **Acceptance Criteria**
-- User can apply one or more filters
-- Filters are optional and can be combined with search
-- Filters refine results without requiring a new page
+- A village dropdown (populated from `GET /api/villages`) is shown when type is `village`
 
 ---
 
-### US-SR-04: Filter by village
+### US-SR-04: Search by qualification field
 **As a user**  
-I want to filter residents by village  
-So that I can view residents from a specific location.
+I want to select a qualification field from a dropdown  
+so that I can find residents with qualifications in a specific area.
 
 **Acceptance Criteria**
-- Village filter is available
-- Only residents from the selected village are displayed
-- Filter works together with name/surname search
+- A qualification field dropdown (populated from `GET /api/qualifications`) is shown when type is `qualification`
 
 ---
 
-### US-SR-05: Filter by status or requirement
+## Results
+
+### US-SR-05: View search results
 **As a user**  
-I want to filter residents based on predefined requirements or status  
-So that I can find residents that meet specific criteria.
+I want to see a list of matching residents  
+so that I can identify the correct person quickly.
 
 **Acceptance Criteria**
-- Requirement/status filter options are clearly labeled
-- Only residents matching the selected requirement are displayed
-- Filter selection can be changed or cleared
+- Each result shows: first name, last name, village
+- Each result has a **View** button linking to `/view-resident/{id}`
+- Each result has an **Edit** button linking to `/edit-resident/{id}`
+- Result count is shown above the list
 
 ---
 
-## Search Results
-
-### US-SR-06: View filtered search results
+### US-SR-06: Handle no results
 **As a user**  
-I want to view search results that reflect both my search input and filters  
-So that I can identify the correct resident quickly.
+I want to see a clear message when no residents match my search  
+so that I understand the outcome.
 
 **Acceptance Criteria**
-- Results update according to applied filters
-- Each result displays first name, last name, and village
-- Results are displayed in a clear list format
+- "No residents found matching your search criteria." is shown when results are empty
+- The message does not prevent further searches
 
 ---
 
-### US-SR-07: Handle no matching results
+### US-SR-07: Validate empty search
 **As a user**  
-I want to receive feedback when no residents match my search and filter criteria  
-So that I understand the outcome of my request.
+I want to be told if I submit a search without entering a term  
+so that I don't get confusing empty results.
 
 **Acceptance Criteria**
-- A clear message is displayed when no results are found
-- Message does not prevent further searches or filter changes
+- Submitting with an empty query shows "Please enter a search term."
+- No API call is made for empty queries
 
 ---
 
-## Resident Management
+## Feedback
 
-### US-SR-08: Edit resident from search results
+### US-SR-08: Handle search errors
 **As a user**  
-I want to access a resident’s record directly from search results  
-So that I can update their information.
+I want to see a message if the search fails  
+so that I know something went wrong.
 
 **Acceptance Criteria**
-- Each result includes an **Edit** button
-- Clicking **Edit** opens the Edit Resident page for that resident
-
----
-
-## Navigation & Usability
-
-### US-SR-09: Return to home page
-**As a user**  
-I want to return to the home page from the search screen  
-So that I can continue using the system.
-
-**Acceptance Criteria**
-- Home button navigates to the home page
-
----
-
-## System Feedback
-
-### US-SR-10: Display validation and system messages
-**As a user**  
-I want to see clear system messages during search and filtering  
-So that I understand what actions are required or what went wrong.
-
-**Acceptance Criteria**
-- Validation and warning messages are visible and user-friendly
-- Messages do not block further interaction
+- If the API call fails, "Search failed. Please try again." is shown
+- The error does not crash the page

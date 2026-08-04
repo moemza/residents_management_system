@@ -2,176 +2,86 @@
 
 ## Epic: Edit Resident Information
 
-**As a system user (admin or data capturer),**  
-I want to view and edit an existing resident’s information,  
-So that resident records remain accurate and up to date.
+**As a system user,**  
+I want to view and edit an existing resident's information,  
+so that resident records remain accurate and up to date.
 
 ---
 
-## View Existing Resident Details
+## Load Existing Data
 
-### US-ER-01: View resident details for editing
+### US-ER-01: Pre-populate form with existing data
 **As a user**  
-I want to see a resident’s existing personal, education, experience, and skills information pre-filled in the form  
-So that I can easily review and update their details.
+I want to see a resident's existing information pre-filled when I open the edit page  
+so that I can review and update only what has changed.
 
 **Acceptance Criteria**
-- Resident personal details are pre-populated
-- Existing education records are displayed
-- Existing work experience records are displayed
-- Existing skills are displayed
-- Resident name is shown in the page heading
+- Page calls `GET /api/residents/{id}` on load
+- A loading spinner is shown while data is fetching
+- If the resident is not found, an error message is shown
+- All personal, education, experience, and skill fields are pre-populated
 
 ---
 
 ## Personal Details
 
-### US-ER-02: Edit personal information
+### US-ER-02: Read-only identity fields
 **As a user**  
-I want to edit a resident’s personal details  
-So that incorrect or outdated information can be corrected.
+I want first name, last name, date of birth, gender, and village to be read-only  
+so that core identity data cannot be accidentally changed.
 
 **Acceptance Criteria**
-- First name and last name are editable and required
-- Date of birth is editable and required
-- Gender can be changed using a dropdown
-- Form validation prevents submission if required fields are empty
+- First name, last name, dob, gender, and village are displayed as read-only inputs
+- These values are still submitted as part of the update payload
 
 ---
 
-### US-ER-03: Update village and contact details
+### US-ER-03: Edit contact details
 **As a user**  
-I want to update a resident’s village and contact information  
-So that their location and contact details remain current.
+I want to update cellphone numbers and email  
+so that contact information stays current.
 
 **Acceptance Criteria**
-- Village list is populated from the system
-- Current village is pre-selected
-- Primary cellphone number is required
-- Secondary cellphone number is optional
-- Email is optional but must be valid if provided
+- Primary cellphone is required — inline error if blank on submit
+- Secondary cellphone is optional
+- Email is optional but validated if provided
 
 ---
 
-## Education
+## Education, Experience, Skills
 
-### US-ER-04: View existing education records
+### US-ER-04: Edit existing records
 **As a user**  
-I want to see all existing education records for a resident  
-So that I can review their qualifications.
+I want all existing education, experience, and skill entries to be pre-filled and editable  
+so that I can correct or update them.
 
 **Acceptance Criteria**
-- All saved education entries are displayed
-- Fields are pre-filled with existing data
-- Qualification name, type, and level are selected correctly
+- All existing rows are rendered with their saved values
+- Any field in any row can be changed
 
 ---
 
-### US-ER-05: Edit education records
+### US-ER-05: Add and remove rows
 **As a user**  
-I want to edit existing education entries  
-So that qualification information can be updated.
+I want to add new rows or remove existing ones  
+so that the resident's records reflect reality.
 
 **Acceptance Criteria**
-- Institution, qualification name, type, level, and year are editable
-- Changes are saved when the form is submitted
+- Clicking **+ Add** appends a blank row to any section
+- Clicking ✖ removes that row
+- On save, the full updated set of rows replaces the previous data
 
 ---
 
-### US-ER-06: Add new education records
+## Save
+
+### US-ER-06: Submit changes
 **As a user**  
-I want to add new education entries while editing a resident  
-So that newly obtained qualifications can be captured.
+I want to submit the form and be redirected to the home page with a confirmation  
+so that I know the update was saved.
 
 **Acceptance Criteria**
-- Clicking **+ Add** creates a new education row
-- New rows behave the same as existing rows
-- New education entries are saved on submission
-
----
-
-### US-ER-07: Remove an education record
-**As a user**  
-I want to remove an education entry  
-So that incorrect or irrelevant qualifications are not saved.
-
-**Acceptance Criteria**
-- Clicking delete (✖) removes the selected education row
-- Remaining rows are unaffected
-
----
-
-## Work Experience
-
-### US-ER-08: View and edit work experience
-**As a user**  
-I want to view and edit a resident’s work experience  
-So that their employment history stays accurate.
-
-**Acceptance Criteria**
-- Existing work experience entries are displayed
-- Company, position, and years fields are editable
-
----
-
-### US-ER-09: Add and remove work experience entries
-**As a user**  
-I want to add or remove work experience entries  
-So that the resident’s employment history reflects reality.
-
-**Acceptance Criteria**
-- Clicking **+ Add** creates a new experience row
-- Clicking delete removes only the selected experience row
-- All changes are saved on submission
-
----
-
-## Skills
-
-### US-ER-10: View and edit skills
-**As a user**  
-I want to view and update a resident’s skills  
-So that their abilities are accurately documented.
-
-**Acceptance Criteria**
-- Existing skills are pre-filled
-- Skill values are editable
-- Skills accept free text
-
----
-
-### US-ER-11: Add and remove skills
-**As a user**  
-I want to add or remove skills dynamically  
-So that the skills list matches the resident’s capabilities.
-
-**Acceptance Criteria**
-- Clicking **+ Add** creates a new skill row
-- Clicking delete removes the selected skill
-- Updated skill list is saved on submission
-
----
-
-## Save Changes
-
-### US-ER-12: Update resident details
-**As a user**  
-I want to submit the edited resident information  
-So that changes are saved in the system.
-
-**Acceptance Criteria**
-- Form submits successfully when validation passes
-- Updated data replaces previous resident data
-- User remains on a valid page after submission
-
----
-
-## Navigation
-
-### US-ER-13: Return to home
-**As a user**  
-I want to return to the home page from the Edit Resident screen  
-So that I can continue working elsewhere in the system.
-
-**Acceptance Criteria**
-- Home button navigates back to the home page
+- On valid submission, `PUT /api/residents/{id}` is called
+- User is redirected to `/` with a success toast notification
+- On API error, an inline error toast is shown and the user stays on the form
+- The submit button shows "Saving…" and is disabled while the request is in flight

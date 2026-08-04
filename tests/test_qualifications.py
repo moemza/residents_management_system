@@ -4,21 +4,24 @@ from app.qualifications import get_all_qualifications
 
 client = TestClient(app)
 
-def test_get_qualifications():
-    response = client.get("/qualifications/")
-    assert response.status_code == 200
 
+def test_get_qualifications_returns_all_keys():
+    response = client.get("/api/qualifications")
+    assert response.status_code == 200
     data = response.json()
-    expected = get_all_qualifications()
-    
-    # Check keys exist
-    for key in ["types", "fields", "levels", "names"]:
+    for key in ("types", "fields", "levels", "names"):
         assert key in data
 
-    # Check some actual values from qualifications.py
+
+def test_qualifications_content():
+    response = client.get("/api/qualifications")
+    data = response.json()
     assert "Information Technology" in data["fields"]
     assert "Certificate" in data["types"]
-    assert "Networking" in data["names"]["Information Technology"]
     assert "NQF Level 5 (Higher Certificate)" in data["levels"]
-    assert data == expected 
-    
+    assert "Networking" in data["names"]["Information Technology"]
+
+
+def test_qualifications_matches_source():
+    response = client.get("/api/qualifications")
+    assert response.json() == get_all_qualifications()
