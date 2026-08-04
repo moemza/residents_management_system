@@ -1,12 +1,15 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 import shutil
+import pathlib
 from datetime import datetime
 import glob
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./database/residents.db"
+BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
+
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{BASE_DIR}/database/residents.db"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -26,9 +29,9 @@ def get_db():
 def backup_database():
     """Create a timestamped backup of the database"""
     try:
-        backup_dir = r"C:\Users\cash crusaders\Documents\Khoronemo\residents_db_backups"
+        backup_dir = BASE_DIR / "database" / "backups"
         os.makedirs(backup_dir, exist_ok=True)
-        source_db = "./database/residents.db"
+        source_db = BASE_DIR / "database" / "residents.db"
         if not os.path.exists(source_db):
             print(f"Source database not found: {source_db}")
             return False

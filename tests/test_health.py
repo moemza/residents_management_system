@@ -3,8 +3,13 @@ from app.main import app
 
 client = TestClient(app)
 
-def test_app_root_redirect():
-    response = client.get("/")
-    assert response.status_code == 200 or response.status_code == 307  # Redirect
-    if response.status_code == 307:
-        assert response.headers["location"] == "/form"
+
+def test_docs_available():
+    response = client.get("/docs")
+    assert response.status_code == 200
+
+
+def test_openapi_schema():
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+    assert "Residents Management API" in response.json()["info"]["title"]

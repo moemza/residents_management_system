@@ -1,14 +1,24 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from .home_routes import router as home_router
-from .search_routes import router as search_router
-from .resident_routes import router as resident_router
+from fastapi.middleware.cors import CORSMiddleware
+from .api_routes import router as api_router
+from .database import create_tables
 
-app = FastAPI()
 
-# Include all routers
-app.include_router(home_router)
-app.include_router(search_router)
-app.include_router(resident_router)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_tables()
+    yield
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+app = FastAPI(title="Residents Management API", version="1.0.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # update for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(api_router, prefix="/api")

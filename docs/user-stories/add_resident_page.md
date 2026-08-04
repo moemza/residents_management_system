@@ -2,9 +2,9 @@
 
 ## Epic: Add New Resident
 
-**As a system user (admin or data capturer),**  
+**As a system user,**  
 I want to add a new resident with personal, education, work experience, and skills information,  
-So that resident data is accurately stored and managed in the system.
+so that resident data is accurately stored and managed in the system.
 
 ---
 
@@ -12,152 +12,93 @@ So that resident data is accurately stored and managed in the system.
 
 ### US-01: Capture basic personal information
 **As a user**  
-I want to enter a resident’s first name, last name, date of birth, and gender  
-So that the resident can be uniquely identified.
+I want to enter a resident's first name, last name, date of birth, and gender  
+so that the resident can be uniquely identified.
 
 **Acceptance Criteria**
-- First name is required
-- Last name is required
-- Date of birth is required and follows `YYYY-MM-DD` format
-- Gender must be selected from a predefined list
+- First name and last name are required — inline error shown if blank on submit
+- Date of birth is required, uses a native date picker, and cannot be a future date
+- Gender must be selected from: Male, Female, Other
 - Form cannot be submitted if required fields are missing
 
 ---
 
 ### US-02: Assign resident to a village
 **As a user**  
-I want to select a village from a predefined list  
-So that the resident is linked to the correct community.
+I want to select a village from a dropdown populated from the API  
+so that the resident is linked to the correct community.
 
 **Acceptance Criteria**
-- Village list is populated from the system
-- Village selection is mandatory
-- Empty village selection is not allowed
+- Village list is fetched from `GET /api/villages` on page load
+- Village selection is required — inline error shown if not selected on submit
 
 ---
 
-### US-03: Capture resident contact details
+### US-03: Capture contact details
 **As a user**  
 I want to enter one or two cellphone numbers and an optional email address  
-So that the resident can be contacted when needed.
+so that the resident can be contacted.
 
 **Acceptance Criteria**
 - Primary cellphone number is required
 - Secondary cellphone number is optional
-- Email is optional
-- Email must be valid if provided
+- Email is optional but must pass format validation if provided
+- Invalid email shows an inline error message
 
 ---
 
 ## Education
 
-### US-04: Capture education details
+### US-04: Add education records
 **As a user**  
-I want to add education details for a resident  
-So that their qualifications are recorded.
+I want to add one or more education entries  
+so that a resident's qualifications are recorded.
 
 **Acceptance Criteria**
-- Institution name can be entered
-- Qualification name must be selected from a grouped list
-- Qualification type is required
-- Qualification level is required
-- Year can be entered manually
-
----
-
-### US-05: Add multiple education records
-**As a user**  
-I want to add multiple education entries  
-So that all qualifications can be captured.
-
-**Acceptance Criteria**
-- Clicking **+ Add** creates a new education row
-- Multiple education rows can be added
-- All rows are submitted together
-
----
-
-### US-06: Remove an education record
-**As a user**  
-I want to remove an education entry  
-So that incorrect or unnecessary data is not saved.
-
-**Acceptance Criteria**
-- Clicking the delete (✖) button removes the selected education row
-- Remaining rows are unaffected
+- Clicking **+ Add** appends a new education row
+- Each row has: Institution (text), Name (grouped dropdown), Type (dropdown), Level (dropdown), Year (text)
+- Dropdown options are fetched from `GET /api/qualifications`
+- Clicking ✖ removes that row without affecting others
 
 ---
 
 ## Work Experience
 
-### US-07: Capture work experience
+### US-05: Add work experience records
 **As a user**  
-I want to add work experience details  
-So that the resident’s employment history is recorded.
+I want to add one or more work experience entries  
+so that a resident's employment history is recorded.
 
 **Acceptance Criteria**
-- Company name can be entered
-- Position can be entered
-- Years of experience can be entered
-
----
-
-### US-08: Add multiple work experience records
-**As a user**  
-I want to add more than one work experience entry  
-So that a full employment history can be captured.
-
-**Acceptance Criteria**
-- Clicking **+ Add** creates a new work experience row
-- Multiple rows can be added
-- All rows are submitted together
-
----
-
-### US-09: Remove a work experience record
-**As a user**  
-I want to remove a work experience entry  
-So that incorrect data can be corrected before saving.
-
-**Acceptance Criteria**
-- Clicking delete removes only the selected row
+- Clicking **+ Add** appends a new experience row
+- Each row has: Company, Position, Years
+- Clicking ✖ removes that row
 
 ---
 
 ## Skills
 
-### US-10: Capture resident skills
+### US-06: Add skills
 **As a user**  
-I want to enter a list of skills for a resident  
-So that their abilities are documented.
+I want to add a list of free-text skills  
+so that a resident's abilities are documented.
 
 **Acceptance Criteria**
-- Skill field accepts free text
-- At least one skill row is available by default
+- Clicking **+ Add** appends a new skill input
+- Clicking ✖ removes that skill
+- Skills accept any free text
 
 ---
 
-### US-11: Add and remove skills
+## Save
+
+### US-07: Submit the form
 **As a user**  
-I want to dynamically add or remove skills  
-So that the skills list accurately reflects the resident.
+I want to submit the form and be redirected to the home page with a confirmation  
+so that I know the resident was saved successfully.
 
 **Acceptance Criteria**
-- Clicking **+ Add** creates a new skill row
-- Clicking delete removes the selected skill row
-
----
-
-## Save Resident
-
-### US-12: Save resident details
-**As a user**  
-I want to submit the form and save the resident’s information  
-So that it is stored in the system for future use.
-
-**Acceptance Criteria**
-- Form submits successfully when all required fields are valid
-- Resident data is persisted in the database
-- User receives confirmation that the resident was saved
-
----
+- On valid submission, `POST /api/residents` is called
+- User is redirected to `/` with a success toast notification
+- On API error, an inline error toast is shown and the user stays on the form
+- The submit button shows "Saving…" and is disabled while the request is in flight
