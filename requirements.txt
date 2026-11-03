@@ -1,10 +1,6 @@
-fastapi
-uvicorn
-pydantic[email]
-python-multipart
-sqlalchemy
-
-# dev / test
-pytest
-pytest-cov
-httpx2
+# Runtime dependencies.
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+pydantic[email]>=2.7,<3
+python-multipart>=0.0.9,<1
+SQLAlchemy>=2.0,<3

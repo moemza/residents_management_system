@@ -7,10 +7,15 @@ export default function EducationSection({ qualifications, rows, setRows }) {
   const remove = (i) => setRows((p) => p.filter((_, idx) => idx !== i));
 
   return (
-    <div className="card mb-4">
+    <section className="card mb-4" aria-labelledby="education-heading">
       <div className="card-header d-flex justify-content-between align-items-center">
-        <span>Education</span>
-        <button type="button" className="btn btn-sm btn-secondary" onClick={() => setRows((p) => [...p, { ...empty }])}>
+        <h2 className="h6 mb-0" id="education-heading">Education</h2>
+        <button
+          type="button"
+          className="btn btn-sm btn-secondary"
+          aria-label="Add education record"
+          onClick={() => setRows((p) => [...p, { ...empty }])}
+        >
           + Add
         </button>
       </div>
@@ -21,13 +26,21 @@ export default function EducationSection({ qualifications, rows, setRows }) {
             <div className="col-md-3">
               <input
                 className="form-control"
+                aria-label={`Institution for education record ${i + 1}`}
+                maxLength={200}
                 placeholder="Institution"
                 value={row.institution}
                 onChange={(e) => update(i, "institution", e.target.value)}
               />
             </div>
             <div className="col-md-3">
-              <select className="form-select" required value={row.name} onChange={(e) => update(i, "name", e.target.value)}>
+              <select
+                className="form-select"
+                aria-label={`Qualification name for education record ${i + 1}`}
+                required
+                value={row.name}
+                onChange={(e) => update(i, "name", e.target.value)}
+              >
                 <option value="">Name</option>
                 {Object.entries(qualifications.names || {}).map(([field, names]) => (
                   <optgroup key={field} label={field}>
@@ -37,13 +50,25 @@ export default function EducationSection({ qualifications, rows, setRows }) {
               </select>
             </div>
             <div className="col-md-2">
-              <select className="form-select" required value={row.type} onChange={(e) => update(i, "type", e.target.value)}>
+              <select
+                className="form-select"
+                aria-label={`Qualification type for education record ${i + 1}`}
+                required
+                value={row.type}
+                onChange={(e) => update(i, "type", e.target.value)}
+              >
                 <option value="">Type</option>
                 {(qualifications.types || []).map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div className="col-md-2">
-              <select className="form-select" required value={row.level} onChange={(e) => update(i, "level", e.target.value)}>
+              <select
+                className="form-select"
+                aria-label={`Qualification level for education record ${i + 1}`}
+                required
+                value={row.level}
+                onChange={(e) => update(i, "level", e.target.value)}
+              >
                 <option value="">Level</option>
                 {(qualifications.levels || []).map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
@@ -51,17 +76,26 @@ export default function EducationSection({ qualifications, rows, setRows }) {
             <div className="col-md-1">
               <input
                 className="form-control"
+                aria-label={`Year completed for education record ${i + 1}`}
+                maxLength={20}
                 placeholder="Year"
                 value={row.year}
                 onChange={(e) => update(i, "year", e.target.value)}
               />
             </div>
             <div className="col-md-1">
-              <button type="button" className="btn btn-danger btn-sm w-100" onClick={() => remove(i)}>✖</button>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm w-100"
+                aria-label={`Remove education record ${i + 1}`}
+                onClick={() => remove(i)}
+              >
+                ✖
+              </button>
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

@@ -1,9 +1,14 @@
 export default function SkillsSection({ rows, setRows }) {
   return (
-    <div className="card mb-4">
+    <section className="card mb-4" aria-labelledby="skills-heading">
       <div className="card-header d-flex justify-content-between align-items-center">
-        <span>Skills</span>
-        <button type="button" className="btn btn-sm btn-secondary" onClick={() => setRows((p) => [...p, { name: "" }])}>
+        <h2 className="h6 mb-0" id="skills-heading">Skills</h2>
+        <button
+          type="button"
+          className="btn btn-sm btn-secondary"
+          aria-label="Add skill record"
+          onClick={() => setRows((p) => [...p, { name: "" }])}
+        >
           + Add
         </button>
       </div>
@@ -14,17 +19,26 @@ export default function SkillsSection({ rows, setRows }) {
             <div className="col-md-11">
               <input
                 className="form-control"
+                aria-label={`Skill ${i + 1}`}
+                maxLength={100}
                 placeholder="Skill"
                 value={row.name}
                 onChange={(e) => setRows((p) => p.map((r, idx) => (idx === i ? { name: e.target.value } : r)))}
               />
             </div>
             <div className="col-md-1">
-              <button type="button" className="btn btn-danger btn-sm w-100" onClick={() => setRows((p) => p.filter((_, idx) => idx !== i))}>✖</button>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm w-100"
+                aria-label={`Remove skill ${i + 1}`}
+                onClick={() => setRows((p) => p.filter((_, idx) => idx !== i))}
+              >
+                ✖
+              </button>
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

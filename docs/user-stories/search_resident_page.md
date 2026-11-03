@@ -53,6 +53,10 @@ so that I can find residents with qualifications in a specific area.
 **Acceptance Criteria**
 - A qualification field dropdown (populated from `GET /api/qualifications`) is shown when type is `qualification`
 
+**Implementation note (2026-10-31):** implemented. The API maps a qualification
+field to its known qualification names using `app/qualifications.py`, and still
+accepts a qualification name directly.
+
 ---
 
 ## Results
@@ -67,6 +71,8 @@ so that I can identify the correct person quickly.
 - Each result has a **View** button linking to `/view-resident/{id}`
 - Each result has an **Edit** button linking to `/edit-resident/{id}`
 - Result count is shown above the list
+- Results are paginated in pages of 20 with Previous/Next controls and a
+  "Showing X–Y of N" summary
 
 ---
 
@@ -100,5 +106,7 @@ I want to see a message if the search fails
 so that I know something went wrong.
 
 **Acceptance Criteria**
-- If the API call fails, "Search failed. Please try again." is shown
+- If the API call fails, a readable error message is shown (the API detail when
+  available, otherwise "Search failed. Please try again.")
 - The error does not crash the page
+- The page offers a link to browse all residents

@@ -1,0 +1,40 @@
+# Version control and local IDE state
+.git
+.gitignore
+.dockerignore
+.idea
+.marscode
+.vscode
+
+# Python local environment and caches
+.venv
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.pytest_cache
+.coverage
+htmlcov
+
+# Sensitive or generated data
+database
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.*
+*.env
+
+# Frontend dependencies and build output
+frontend/node_modules
+frontend/dist
+frontend/dist-ssr
+frontend/.venv
+frontend/tests
+
+# Local documentation and development-only files
+docs
+tests
+*.md
+
+# Logs and local artifacts
+*.log

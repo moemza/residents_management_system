@@ -1,0 +1,17 @@
+# Example Docker Compose configuration. Copy to docker-compose.yml and review
+# before use. Do not commit real tokens or resident data.
+services:
+  residents:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Keep secure cookies enabled and terminate TLS before the app.
+      RESIDENTS_COOKIE_SECURE: "true"
+      CORS_ORIGINS: "http://localhost:8000"
+    volumes:
+      - residents-data:/data
+    restart: unless-stopped
+
+volumes:
+  residents-data:

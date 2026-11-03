@@ -1,0 +1,49 @@
+:root {
+  color-scheme: light;
+  background-color: #f7f9fc;
+}
+
+body {
+  min-width: 320px;
+  background-color: #f7f9fc;
+  color: #202b3c;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  scroll-margin-block: 1rem;
+}
+
+:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 2px;
+}
+
+.app-header {
+  box-shadow: 0 2px 8px rgb(22 45 80 / 12%);
+}
+
+.login-card {
+  max-width: 32rem;
+}
+
+.page-shell {
+  min-height: calc(100vh - 4.25rem);
+}
+
+.table-responsive {
+  border-radius: 0.375rem;
+}
+
+@media (max-width: 575.98px) {
+  .container {
+    --bs-gutter-x: 1.25rem;
+  }
+
+  .btn {
+    min-height: 2.5rem;
+  }
+}

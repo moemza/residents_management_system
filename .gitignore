@@ -8,9 +8,7 @@ __pycache__/
 htmlcov/
 
 # Database
-database/residents.db
-database/backups/
-database/test_residents.db
+database/
 
 # Node
 frontend/node_modules/
@@ -18,7 +16,10 @@ frontend/dist/
 frontend/dist-ssr/
 frontend/*.local
 *.log
+# Keep the frontend lockfile for reproducible installs; ignore only stray
+# root-level lockfiles created by running npm outside the frontend directory.
 package-lock.json
+!frontend/package-lock.json
 
 # Env
 .env

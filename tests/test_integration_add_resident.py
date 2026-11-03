@@ -177,9 +177,8 @@ def test_us07_created_resident_retrievable(client):
     assert response.json()["id"] == created_id
 
 
-def test_us07_xss_input_is_sanitized(client):
-    """String inputs containing HTML are escaped before persistence."""
+def test_us07_markup_input_is_rejected(client):
+    """Markup is rejected at the API boundary; React escapes rendered text."""
     payload = {**RESIDENT_PAYLOAD, "first_name": "<script>alert(1)</script>"}
     response = client.post("/api/residents", json=payload)
-    assert response.status_code == 201
-    assert "<script>" not in response.json()["first_name"]
+    assert response.status_code == 422
