@@ -1,84 +1,89 @@
-import html
-from datetime import date
-from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy.orm import Session
+from typing import Literal, Optional
 
-from .database import get_db, backup_database
-from .models import Resident, Qualification, Experience, Skill
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from sqlalchemy import or_
+from sqlalchemy.orm import Session, selectinload
+
+from . import database
+from .auth import require_admin
+from .database import get_db
+from .models import AuditEvent, Experience, Qualification, Resident, Skill
 from .qualifications import get_all_qualifications
+from .schemas import (
+    AuditEventOut,
+    ErrorOut,
+    ResidentIn,
+    ResidentOut,
+)
 from .villages import get_all_villages
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin)])
+
+MAX_QUERY_LENGTH = 200
 
 
-# ── Request / Response schemas ────────────────────────────────────────────────
+def _like_pattern(value: str) -> str:
+    """Build a literal contains-pattern for SQL LIKE/ILIKE."""
+    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
 
-class QualificationIn(BaseModel):
-    institution: str
-    name: str
-    type: str
-    level: str
-    year: str
 
-    @field_validator("institution", "name", "type", "level", "year", mode="before")
-    @classmethod
-    def sanitize(cls, v):
-        return html.escape(str(v).strip()) if v else v
+def _qualification_terms(query: str) -> list[str]:
+    """Match a qualification field to its known names, or fall back to a name."""
+    names_by_field = get_all_qualifications().get("names", {})
+    for field, names in names_by_field.items():
+        if field.casefold() == query.casefold():
+            return list(names) or [query]
+    return [query]
 
-class ExperienceIn(BaseModel):
-    company: str
-    position: str
-    years: str
 
-    @field_validator("company", "position", "years", mode="before")
-    @classmethod
-    def sanitize(cls, v):
-        return html.escape(str(v).strip()) if v else v
+def _resident_options():
+    """Eager-load child rows to avoid N+1 queries on list and search."""
+    return (
+        selectinload(Resident.qualifications),
+        selectinload(Resident.experiences),
+        selectinload(Resident.skills),
+    )
 
-class SkillIn(BaseModel):
-    name: str
 
-    @field_validator("name", mode="before")
-    @classmethod
-    def sanitize(cls, v):
-        return html.escape(str(v).strip()) if v else v
+def _ensure_backup() -> None:
+    """Take a pre-write backup, honouring the fail-closed configuration.
 
-class ResidentIn(BaseModel):
-    first_name: str
-    last_name: str
-    dob: date
-    gender: str
-    village: str
-    cellphone_no: str
-    cellphone_no2: Optional[str] = None
-    email: Optional[EmailStr] = None
-    qualifications: List[QualificationIn] = Field(default_factory=list)
-    experiences: List[ExperienceIn] = Field(default_factory=list)
-    skills: List[SkillIn] = Field(default_factory=list)
+    Backups are best-effort by default for availability. Operators can set
+    ``RESIDENTS_BACKUP_REQUIRED=true`` to abort a write when an enabled backup
+    fails, rather than accepting an unprotected write.
+    """
+    if database.backup_database():
+        return
+    if database.BACKUP_ENABLED and database.BACKUP_REQUIRED:
+        raise HTTPException(
+            status_code=503,
+            detail="Database backup failed; the write was aborted",
+        )
 
-    @field_validator("dob", mode="after")
-    @classmethod
-    def dob_not_in_future(cls, v):
-        if v and v > date.today():
-            raise ValueError("Date of birth cannot be in the future")
-        return v
 
-    @field_validator("first_name", "last_name", "gender", "village", "cellphone_no", mode="before")
-    @classmethod
-    def sanitize_str(cls, v):
-        sanitized = html.escape(str(v).strip()) if v else v
-        if not sanitized or not sanitized.strip():
-            raise ValueError("Field cannot be empty or whitespace")
-        return sanitized
+def _audit_actor(request: Request) -> str:
+    """Return the authenticated account name without storing credentials or PII."""
+    return getattr(request.state, "admin_username", "unknown")
 
-    @field_validator("cellphone_no2", "email", mode="before")
-    @classmethod
-    def sanitize_optional_str(cls, v):
-        if not v or not str(v).strip():
-            return None
-        return html.escape(str(v).strip())
+
+def _record_audit(
+    db: Session,
+    request: Request,
+    action: str,
+    resident_id: int,
+    detail: Optional[str] = None,
+) -> None:
+    """Append a non-PII audit event in the same transaction as the write."""
+    db.add(
+        AuditEvent(
+            action=action,
+            resident_id=resident_id,
+            actor=_audit_actor(request),
+            request_id=getattr(request.state, "request_id", None),
+            detail=detail,
+        )
+    )
 
 
 def _resident_to_dict(r: Resident) -> dict:
@@ -105,35 +110,83 @@ def _resident_to_dict(r: Resident) -> dict:
     }
 
 
+# ── Authentication ────────────────────────────────────────────────────────────
+
+@router.get("/auth/verify", tags=["auth"])
+def verify_auth():
+    """Confirm that the current administrator session is valid."""
+    return {"authenticated": True}
+
+
 # ── Reference data ─────────────────────────────────────────────────────────────
 
-@router.get("/villages")
+@router.get("/villages", response_model=list[str], tags=["reference"])
 def list_villages():
     return get_all_villages()
 
 
-@router.get("/qualifications")
+@router.get("/qualifications", response_model=dict, tags=["reference"])
 def list_qualifications():
     return get_all_qualifications()
 
 
 # ── Residents CRUD ─────────────────────────────────────────────────────────────
 
-@router.get("/residents")
-def list_residents(db: Session = Depends(get_db)):
-    return [_resident_to_dict(r) for r in db.query(Resident).all()]
+@router.get("/residents", response_model=list[ResidentOut], tags=["residents"])
+def list_residents(
+    response: Response,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    total = db.query(Resident).count()
+    residents = (
+        db.query(Resident)
+        .options(*_resident_options())
+        .order_by(Resident.id)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    response.headers["X-Total-Count"] = str(total)
+    return [_resident_to_dict(r) for r in residents]
 
 
-@router.get("/residents/{resident_id}")
+@router.get(
+    "/residents/{resident_id}",
+    response_model=ResidentOut,
+    responses={404: {"model": ErrorOut}},
+    tags=["residents"],
+)
 def get_resident(resident_id: int, db: Session = Depends(get_db)):
-    r = db.query(Resident).filter(Resident.id == resident_id).first()
+    r = (
+        db.query(Resident)
+        .options(*_resident_options())
+        .filter(Resident.id == resident_id)
+        .first()
+    )
     if not r:
         raise HTTPException(status_code=404, detail="Resident not found")
     return _resident_to_dict(r)
 
 
-@router.post("/residents", status_code=201)
-def create_resident(payload: ResidentIn, db: Session = Depends(get_db)):
+@router.post(
+    "/residents",
+    status_code=201,
+    response_model=ResidentOut,
+    responses={
+        413: {"model": ErrorOut},
+        422: {"model": ErrorOut},
+        503: {"model": ErrorOut},
+    },
+    tags=["residents"],
+)
+def create_resident(
+    payload: ResidentIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _ensure_backup()
     try:
         resident = Resident(
             first_name=payload.first_name,
@@ -149,20 +202,59 @@ def create_resident(payload: ResidentIn, db: Session = Depends(get_db)):
             skills=[Skill(**s.model_dump()) for s in payload.skills],
         )
         db.add(resident)
+        db.flush()
+        _record_audit(db, request, "create", resident.id)
         db.commit()
         db.refresh(resident)
-        backup_database()
         return _resident_to_dict(resident)
     except Exception:
         db.rollback()
         raise
 
 
-@router.put("/residents/{resident_id}")
-def update_resident(resident_id: int, payload: ResidentIn, db: Session = Depends(get_db)):
+@router.put(
+    "/residents/{resident_id}",
+    response_model=ResidentOut,
+    responses={
+        404: {"model": ErrorOut},
+        409: {"model": ErrorOut},
+        413: {"model": ErrorOut},
+        422: {"model": ErrorOut},
+        503: {"model": ErrorOut},
+    },
+    tags=["residents"],
+)
+def update_resident(
+    resident_id: int,
+    payload: ResidentIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     resident = db.query(Resident).filter(Resident.id == resident_id).first()
     if not resident:
         raise HTTPException(status_code=404, detail="Resident not found")
+
+    identity_fields = ("first_name", "last_name", "dob", "gender", "village")
+    changed = [
+        field for field in identity_fields
+        if getattr(resident, field) != getattr(payload, field)
+    ]
+    if changed:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Identity fields cannot be changed through this endpoint: "
+                + ", ".join(changed)
+            ),
+        )
+
+    contact_fields = ("cellphone_no", "cellphone_no2", "email")
+    changed_contact = [
+        field for field in contact_fields
+        if getattr(resident, field) != getattr(payload, field)
+    ]
+
+    _ensure_backup()
     try:
         db.query(Qualification).filter(Qualification.resident_id == resident_id).delete()
         db.query(Experience).filter(Experience.resident_id == resident_id).delete()
@@ -178,24 +270,41 @@ def update_resident(resident_id: int, payload: ResidentIn, db: Session = Depends
         for s in payload.skills:
             db.add(Skill(**s.model_dump(), resident_id=resident_id))
 
+        _record_audit(
+            db,
+            request,
+            "update",
+            resident_id,
+            detail="contact_fields=" + (",".join(changed_contact) or "none"),
+        )
         db.commit()
         db.refresh(resident)
-        backup_database()
         return _resident_to_dict(resident)
     except Exception:
         db.rollback()
         raise
 
 
-@router.delete("/residents/{resident_id}", status_code=204)
-def delete_resident(resident_id: int, db: Session = Depends(get_db)):
+@router.delete(
+    "/residents/{resident_id}",
+    status_code=204,
+    responses={404: {"model": ErrorOut}, 503: {"model": ErrorOut}},
+    tags=["residents"],
+)
+def delete_resident(
+    resident_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     resident = db.query(Resident).filter(Resident.id == resident_id).first()
     if not resident:
         raise HTTPException(status_code=404, detail="Resident not found")
+
+    _ensure_backup()
     try:
+        _record_audit(db, request, "delete", resident_id)
         db.delete(resident)
         db.commit()
-        backup_database()
     except Exception:
         db.rollback()
         raise
@@ -203,32 +312,92 @@ def delete_resident(resident_id: int, db: Session = Depends(get_db)):
 
 # ── Search ─────────────────────────────────────────────────────────────────────
 
-@router.get("/search")
+@router.get("/search", response_model=list[ResidentOut], tags=["search"])
 def search_residents(
-    query: str = "",
-    search_type: str = "name",
+    response: Response,
+    query: str = Query("", max_length=MAX_QUERY_LENGTH),
+    search_type: Literal["name", "village", "qualification", "skill"] = "name",
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-    if not query.strip():
+    term = query.strip()
+    if not term:
+        response.headers["X-Total-Count"] = "0"
         return []
 
-    safe_query = f"%{html.escape(query.strip())}%"
-
     if search_type == "name":
-        results = db.query(Resident).filter(
-            (Resident.first_name.ilike(safe_query)) | (Resident.last_name.ilike(safe_query))
-        ).all()
+        pattern = _like_pattern(term)
+        base_query = db.query(Resident).filter(
+            or_(
+                Resident.first_name.ilike(pattern, escape="\\"),
+                Resident.last_name.ilike(pattern, escape="\\"),
+            )
+        )
     elif search_type == "village":
-        results = db.query(Resident).filter(Resident.village.ilike(safe_query)).all()
+        base_query = db.query(Resident).filter(
+            Resident.village.ilike(_like_pattern(term), escape="\\")
+        )
     elif search_type == "qualification":
-        results = db.query(Resident).join(Resident.qualifications).filter(
-            Qualification.name.ilike(safe_query)
-        ).all()
-    elif search_type == "skill":
-        results = db.query(Resident).join(Resident.skills).filter(
-            Skill.name.ilike(safe_query)
-        ).all()
-    else:
-        results = []
+        terms = _qualification_terms(term)
+        base_query = (
+            db.query(Resident)
+            .join(Resident.qualifications)
+            .filter(
+                or_(
+                    *[
+                        Qualification.name.ilike(_like_pattern(name), escape="\\")
+                        for name in terms
+                    ]
+                )
+            )
+        )
+    else:  # skill
+        base_query = (
+            db.query(Resident)
+            .join(Resident.skills)
+            .filter(Skill.name.ilike(_like_pattern(term), escape="\\"))
+        )
 
+    total = base_query.distinct().count()
+    results = (
+        base_query.distinct()
+        .options(*_resident_options())
+        .order_by(Resident.id)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    response.headers["X-Total-Count"] = str(total)
     return [_resident_to_dict(r) for r in results]
+
+
+# ── Audit trail ────────────────────────────────────────────────────────────────
+
+@router.get("/audit", response_model=list[AuditEventOut], tags=["audit"])
+def list_audit_events(
+    response: Response,
+    action: Optional[Literal["create", "update", "delete"]] = None,
+    resident_id: Optional[int] = Query(None, ge=1),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    """Return non-PII write events, newest first.
+
+    The audit trail records the action, resident ID, actor class, request ID,
+    and changed contact-field names. It never records field values, names,
+    tokens, or client IP addresses.
+    """
+    query = db.query(AuditEvent)
+    if action is not None:
+        query = query.filter(AuditEvent.action == action)
+    if resident_id is not None:
+        query = query.filter(AuditEvent.resident_id == resident_id)
+
+    total = query.count()
+    events = (
+        query.order_by(AuditEvent.id.desc()).offset(offset).limit(limit).all()
+    )
+    response.headers["X-Total-Count"] = str(total)
+    return events

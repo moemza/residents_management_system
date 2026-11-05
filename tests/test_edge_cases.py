@@ -47,24 +47,36 @@ def test_whitespace_only_cellphone_rejected(client):
     assert response.status_code == 422
 
 
-# ── XSS / injection in every string field ────────────────────────────────────
+# ── Markup rejection ─────────────────────────────────────────────────────────
+#
+# Values are stored as raw text and escaped by React at render time. Markup is
+# rejected rather than persisted in escaped form, which avoids double-escaped
+# display values and keeps search terms meaningful.
 
-def test_xss_in_last_name_sanitized(client):
+def test_markup_in_last_name_rejected(client):
     response = client.post("/api/residents", json={**RESIDENT_PAYLOAD, "last_name": "<img src=x onerror=alert(1)>"})
-    assert response.status_code == 201
-    assert "<img" not in response.json()["last_name"]
+    assert response.status_code == 422
 
 
-def test_xss_in_village_sanitized(client):
+def test_markup_in_village_rejected(client):
     response = client.post("/api/residents", json={**RESIDENT_PAYLOAD, "village": "<script>bad()</script>"})
-    assert response.status_code == 201
-    assert "<script>" not in response.json()["village"]
+    assert response.status_code == 422
 
 
-def test_xss_in_skill_name_sanitized(client):
+def test_markup_in_skill_name_rejected(client):
     response = client.post("/api/residents", json={**RESIDENT_PAYLOAD, "skills": [{"name": "<b>hack</b>"}]})
+    assert response.status_code == 422
+
+
+def test_ampersand_and_quotes_are_stored_raw(client):
+    """Text containing ampersands is stored verbatim, not HTML-escaped."""
+    response = client.post(
+        "/api/residents",
+        json={**RESIDENT_PAYLOAD, "first_name": "Thabo & Sons", "last_name": "O'Brien"},
+    )
     assert response.status_code == 201
-    assert "<b>" not in response.json()["skills"][0]["name"]
+    assert response.json()["first_name"] == "Thabo & Sons"
+    assert response.json()["last_name"] == "O'Brien"
 
 
 def test_xss_in_search_query_does_not_crash(client):
@@ -127,12 +139,11 @@ def test_post_wrong_type_for_skills_returns_422(client):
 
 # ── Large inputs ──────────────────────────────────────────────────────────────
 
-def test_very_long_first_name_accepted(client):
-    """A very long name should be stored without crashing."""
+def test_very_long_first_name_rejected(client):
+    """Names above the documented limit are rejected with 422."""
     long_name = "A" * 500
     response = client.post("/api/residents", json={**RESIDENT_PAYLOAD, "first_name": long_name})
-    assert response.status_code == 201
-    assert response.json()["first_name"] == long_name
+    assert response.status_code == 422
 
 
 def test_many_skills_accepted(client):
@@ -179,7 +190,7 @@ def test_search_with_special_characters_does_not_crash(client):
         assert response.status_code == 200, f"Crashed on query: {term!r}"
 
 
-def test_search_very_long_query_does_not_crash(client):
-    """A very long search query must not crash the API."""
+def test_search_very_long_query_rejected(client):
+    """Search queries above the documented limit return 422."""
     long_query = "A" * 1000
-    assert client.get(f"/api/search?query={long_query}&search_type=name").status_code == 200
+    assert client.get(f"/api/search?query={long_query}&search_type=name").status_code == 422

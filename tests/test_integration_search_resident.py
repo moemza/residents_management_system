@@ -118,12 +118,11 @@ def test_us_sr07_whitespace_only_query_returns_empty_list(client):
 
 # ── US-SR-08: Handle search errors / unknown type ────────────────────────────
 
-def test_us_sr08_unknown_search_type_returns_empty_list(client):
-    """An unrecognised search_type returns an empty list, not a 500."""
+def test_us_sr08_unknown_search_type_is_rejected(client):
+    """An unrecognised search_type is a client error, not a 500."""
     _create(client)
     response = client.get("/api/search?query=Mpho&search_type=unknown")
-    assert response.status_code == 200
-    assert response.json() == []
+    assert response.status_code == 422
 
 
 # ── Search by skill ───────────────────────────────────────────────────────────
