@@ -238,7 +238,8 @@ limitations; deploy with HTTPS and explicit trusted CORS origins.
 
 **Branch:** `feature/react-frontend-migration`
 **Status:** implementation and independent security/correctness reviews complete;
-local validation recorded below. Publication awaits successful feature-branch CI.
+local validation recorded below. Implementation commit `1979a5c` is pushed and
+[feature-branch CI passed](https://github.com/moemza/residents_management_system/actions/runs/42004847471).
 
 **Product and API decisions:** Existing resident fields and the current
 `ResidentIn` schema are reused; this phase adds no columns or migrations.
