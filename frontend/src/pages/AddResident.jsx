@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { getVillages, getQualifications, createResident } from "../api/residents";
-import { getApiErrorMessage } from "../api/errors";
-import { GENDERS } from "../constants";
+import { getApiErrorMessage, getApiFieldErrors, formatApiFieldLabel } from "../api/errors";
 import EducationSection from "../components/EducationSection";
 import ExperienceSection from "../components/ExperienceSection";
 import SkillsSection from "../components/SkillsSection";
@@ -20,6 +19,7 @@ export default function AddResident() {
   const [qualificationData, setQualificationData] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [referenceError, setReferenceError] = useState("");
+  const [submissionError, setSubmissionError] = useState("");
 
   const [form, setForm] = useState({
     first_name: "", last_name: "", dob: "", gender: "",
@@ -48,6 +48,7 @@ export default function AddResident() {
   const set = (field) => (e) => {
     setForm((p) => ({ ...p, [field]: e.target.value }));
     setErrors((p) => ({ ...p, [field]: undefined }));
+    setSubmissionError("");
   };
 
   const validate = () => {
@@ -55,10 +56,28 @@ export default function AddResident() {
     if (!form.first_name.trim()) e.first_name = "Required";
     if (!form.last_name.trim()) e.last_name = "Required";
     if (!form.dob) e.dob = "Required";
-    if (!form.gender) e.gender = "Required";
-    if (!form.village) e.village = "Required";
+    if (!form.gender.trim()) e.gender = "Required";
+    if (!form.village.trim()) e.village = "Required";
     if (!form.cellphone_no.trim()) e.cellphone_no = "Required";
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Invalid email";
+    if (form.dob && form.dob > new Date().toISOString().slice(0, 10)) {
+      e.dob = "Date of birth cannot be in the future";
+    }
+    const requiredChildFields = {
+      qualifications: ["institution", "name", "type", "level", "year"],
+      experiences: ["company", "position", "years"],
+      skills: ["name"],
+    };
+    for (const [collection, fields] of Object.entries(requiredChildFields)) {
+      const rows = collection === "qualifications" ? education : collection === "experiences" ? experience : skills;
+      rows.forEach((row, index) => {
+        fields.forEach((key) => {
+          if (!String(row[key] ?? "").trim()) {
+            e[`${collection}.${index}.${key}`] = "Required";
+          }
+        });
+      });
+    }
     return e;
   };
 
@@ -73,11 +92,14 @@ export default function AddResident() {
     const errs = validate();
     if (Object.keys(errs).length) {
       setErrors(errs);
+      setSubmissionError("Please correct the highlighted fields before saving.");
       focusFirstInvalid();
       return;
     }
 
     setSubmitting(true);
+    setSubmissionError("");
+    setErrors({});
     try {
       await createResident({
         ...form,
@@ -87,10 +109,24 @@ export default function AddResident() {
       });
       navigate("/residents", { state: { success: "Resident added successfully." } });
     } catch (err) {
-      showToast(getApiErrorMessage(err, "Failed to save resident."), "error");
+      const fieldErrors = getApiFieldErrors(err);
+      if (Object.keys(fieldErrors).length) {
+        setErrors(fieldErrors);
+        setSubmissionError("The resident could not be saved. Correct the highlighted fields and try again.");
+        focusFirstInvalid();
+      } else {
+        setSubmissionError(getApiErrorMessage(err, "Failed to save resident."));
+      }
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const clearFieldError = (key) => {
+    setErrors((current) => key.includes(".")
+      ? { ...current, [key]: undefined }
+      : Object.fromEntries(Object.entries(current).filter(([field]) => !field.startsWith(`${key}.`))));
+    setSubmissionError("");
   };
 
   const field = (label, key, type = "text", required = false) => {
@@ -101,6 +137,7 @@ export default function AddResident() {
         <input
           id={key}
           type={type}
+          list={key === "gender" ? "gender-options" : undefined}
           required={required}
           maxLength={key.startsWith("cellphone") ? 30 : 100}
           className={`form-control ${errors[key] ? "is-invalid" : ""}`}
@@ -126,6 +163,18 @@ export default function AddResident() {
       {referenceError && (
         <div className="alert alert-danger" role="alert">{referenceError}</div>
       )}
+      {submissionError && (
+        <div className="alert alert-danger" role="alert" aria-live="assertive">
+          <p className="mb-1">{submissionError}</p>
+          {Object.entries(errors).filter(([, message]) => message).length > 0 && (
+            <ul className="mb-0">
+              {Object.entries(errors).filter(([, message]) => message).map(([key, message]) => (
+                <li key={key}>{formatApiFieldLabel(key)}: {message}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate ref={formRef}>
         <div className="card mb-4">
@@ -149,38 +198,30 @@ export default function AddResident() {
                 />
                 {errors.dob && <div id="dob-error" className="invalid-feedback">{errors.dob}</div>}
               </div>
-              <div className="col-md-3">
-                <label className="form-label" htmlFor="gender">Gender *</label>
-                <select
-                  id="gender"
-                  required
-                  className={`form-select ${errors.gender ? "is-invalid" : ""}`}
-                  aria-invalid={Boolean(errors.gender)}
-                  aria-describedby={errors.gender ? "gender-error" : undefined}
-                  value={form.gender}
-                  onChange={set("gender")}
-                >
-                  <option value="">Select Gender</option>
-                  {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
-                </select>
-                {errors.gender && <div id="gender-error" className="invalid-feedback">{errors.gender}</div>}
-              </div>
+              {field("Gender", "gender", "text", true)}
             </div>
+            <datalist id="gender-options">
+              <option value="Male" />
+              <option value="Female" />
+              <option value="Other" />
+            </datalist>
             <div className="row g-2 mb-3">
               <div className="col-md-4">
                 <label className="form-label" htmlFor="village">Village *</label>
-                <select
+                <input
                   id="village"
+                  list="village-options"
                   required
-                  className={`form-select ${errors.village ? "is-invalid" : ""}`}
+                  maxLength={100}
+                  className={`form-control ${errors.village ? "is-invalid" : ""}`}
                   aria-invalid={Boolean(errors.village)}
                   aria-describedby={errors.village ? "village-error" : undefined}
                   value={form.village}
                   onChange={set("village")}
-                >
-                  <option value="">Select Village</option>
-                  {villages.map((v) => <option key={v} value={v}>{v}</option>)}
-                </select>
+                />
+                <datalist id="village-options">
+                  {villages.map((v) => <option key={v} value={v} />)}
+                </datalist>
                 {errors.village && <div id="village-error" className="invalid-feedback">{errors.village}</div>}
               </div>
               {field("Cellphone No", "cellphone_no", "tel", true)}
@@ -215,9 +256,9 @@ export default function AddResident() {
           </div>
         </div>
 
-        <EducationSection qualifications={qualificationData} rows={education} setRows={setEducation} />
-        <ExperienceSection rows={experience} setRows={setExperience} />
-        <SkillsSection rows={skills} setRows={setSkills} />
+        <EducationSection qualifications={qualificationData} rows={education} setRows={setEducation} errors={errors} onFieldChange={clearFieldError} />
+        <ExperienceSection rows={experience} setRows={setExperience} errors={errors} onFieldChange={clearFieldError} />
+        <SkillsSection rows={skills} setRows={setSkills} errors={errors} onFieldChange={clearFieldError} />
 
         <button type="submit" className="btn btn-primary w-100" disabled={submitting}>
           {submitting ? "Saving…" : "Save Resident"}

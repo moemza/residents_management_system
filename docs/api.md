@@ -123,8 +123,9 @@ Returns all qualification reference data used to populate form dropdowns.
 
 ### `GET /residents`
 
-Returns residents with their qualifications, experiences, and skills, ordered by
-ID.
+Returns residents with their qualifications, experiences, and skills. Optional
+filters are combined with **AND**; residents matching several child rows still
+appear once. The endpoint remains administrator-only.
 
 **Query params**
 
@@ -132,12 +133,30 @@ ID.
 |---|---|---|---|---|
 | `limit` | integer | `100` | `1`–`500` | Maximum rows returned |
 | `offset` | integer | `0` | `>= 0` | Rows to skip |
+| `name` | string | omitted | max 200 chars | Case-insensitive partial match in first **or** last name |
+| `village` | string | omitted | max 200 chars | Case-insensitive partial match in village |
+| `qualification` | string | omitted | max 200 chars | Case-insensitive partial match in qualification name; known qualification fields are mapped to their names as in `/search` |
+| `skill` | string | omitted | max 200 chars | Case-insensitive partial match in skill name |
+| `sort_by` | string | `id` | `id`, `first_name`, `last_name`, `village`, `dob` | Primary sort field |
+| `sort_order` | string | `asc` | `asc`, `desc` | Primary sort direction |
+
+Omitted or blank filters are ignored. `%` and `_` in filter values are treated
+literally. Sorting always has a deterministic resident-ID tie-breaker: ID is
+ascending when another field is selected; when sorting by ID, `sort_order`
+controls the ID direction. Invalid sort fields, directions, overlong filters,
+or pagination values return `422`. The returned total counts all matching
+residents before pagination.
 
 **Response `200`** — array of resident objects
 
-**Response headers** — `X-Total-Count: <total residents>`
+**Response headers** — `X-Total-Count: <total matching residents>`
 
-**Response `422`** — invalid pagination values
+**Response `422`** — invalid filters, sort parameters, or pagination values
+
+The browser's browse and search views share this filtered endpoint. Applying
+filters starts at the first page; reset clears all filters, sorting, and page
+state. Changing sort also returns to the first page. The separate `/search`
+endpoint below remains available for existing single-category clients.
 
 ---
 
@@ -250,6 +269,11 @@ fields.
 The response audit event records which contact field names changed, but never
 their values.
 
+The add/edit forms associate validation locations with the corresponding
+personal-detail or nested-record field, announce a concise error summary, and
+retain entered values after a rejected submission. Successful saves navigate
+back to the resident list with a success message.
+
 ---
 
 ### `DELETE /residents/{id}`
@@ -271,7 +295,9 @@ removed.
 
 ### `GET /search`
 
-Searches residents by the selected criterion.
+Searches residents by one selected criterion. This existing endpoint and its
+`search_type` parameter are retained for single-category clients; the browser
+uses the combined filters on `GET /residents`.
 
 **Query params**
 

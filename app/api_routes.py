@@ -137,13 +137,56 @@ def list_residents(
     response: Response,
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    name: Optional[str] = Query(None, max_length=MAX_QUERY_LENGTH),
+    village: Optional[str] = Query(None, max_length=MAX_QUERY_LENGTH),
+    qualification: Optional[str] = Query(None, max_length=MAX_QUERY_LENGTH),
+    skill: Optional[str] = Query(None, max_length=MAX_QUERY_LENGTH),
+    sort_by: Literal["id", "first_name", "last_name", "village", "dob"] = "id",
+    sort_order: Literal["asc", "desc"] = "asc",
     db: Session = Depends(get_db),
 ):
-    total = db.query(Resident).count()
+    query = db.query(Resident)
+    if name and name.strip():
+        pattern = _like_pattern(name.strip())
+        query = query.filter(
+            or_(
+                Resident.first_name.ilike(pattern, escape="\\"),
+                Resident.last_name.ilike(pattern, escape="\\"),
+            )
+        )
+    if village and village.strip():
+        query = query.filter(
+            Resident.village.ilike(_like_pattern(village.strip()), escape="\\")
+        )
+    if qualification and qualification.strip():
+        terms = _qualification_terms(qualification.strip())
+        query = query.filter(
+            Resident.qualifications.any(
+                or_(
+                    *[
+                        Qualification.name.ilike(_like_pattern(term), escape="\\")
+                        for term in terms
+                    ]
+                )
+            )
+        )
+    if skill and skill.strip():
+        query = query.filter(
+            Resident.skills.any(
+                Skill.name.ilike(_like_pattern(skill.strip()), escape="\\")
+            )
+        )
+
+    total = query.count()
+    sort_column = getattr(Resident, sort_by)
+    ordering = sort_column.asc() if sort_order == "asc" else sort_column.desc()
+    order_by = [ordering]
+    if sort_by != "id":
+        order_by.append(Resident.id.asc())
     residents = (
-        db.query(Resident)
+        query
         .options(*_resident_options())
-        .order_by(Resident.id)
+        .order_by(*order_by)
         .offset(offset)
         .limit(limit)
         .all()

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { getResident, getQualifications, updateResident } from "../api/residents";
-import { getApiErrorMessage } from "../api/errors";
+import { getApiErrorMessage, getApiFieldErrors, formatApiFieldLabel } from "../api/errors";
 import EducationSection from "../components/EducationSection";
 import ExperienceSection from "../components/ExperienceSection";
 import SkillsSection from "../components/SkillsSection";
@@ -20,6 +20,7 @@ export default function EditResident() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [submissionError, setSubmissionError] = useState("");
 
   const [form, setForm] = useState({
     first_name: "", last_name: "", dob: "", gender: "",
@@ -69,12 +70,28 @@ export default function EditResident() {
   const set = (field) => (e) => {
     setForm((p) => ({ ...p, [field]: e.target.value }));
     setErrors((p) => ({ ...p, [field]: undefined }));
+    setSubmissionError("");
   };
 
   const validate = () => {
     const e = {};
     if (!form.cellphone_no.trim()) e.cellphone_no = "Required";
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Invalid email";
+    const requiredChildFields = {
+      qualifications: ["institution", "name", "type", "level", "year"],
+      experiences: ["company", "position", "years"],
+      skills: ["name"],
+    };
+    for (const [collection, fields] of Object.entries(requiredChildFields)) {
+      const rows = collection === "qualifications" ? education : collection === "experiences" ? experience : skills;
+      rows.forEach((row, index) => {
+        fields.forEach((key) => {
+          if (!String(row[key] ?? "").trim()) {
+            e[`${collection}.${index}.${key}`] = "Required";
+          }
+        });
+      });
+    }
     return e;
   };
 
@@ -89,19 +106,36 @@ export default function EditResident() {
     const errs = validate();
     if (Object.keys(errs).length) {
       setErrors(errs);
+      setSubmissionError("Please correct the highlighted fields before saving.");
       focusFirstInvalid();
       return;
     }
 
     setSubmitting(true);
+    setSubmissionError("");
+    setErrors({});
     try {
       await updateResident(id, { ...form, qualifications: education, experiences: experience, skills });
       navigate("/residents", { state: { success: "Resident updated successfully." } });
     } catch (err) {
-      showToast(getApiErrorMessage(err, "Failed to update resident."), "error");
+      const fieldErrors = getApiFieldErrors(err);
+      if (Object.keys(fieldErrors).length) {
+        setErrors(fieldErrors);
+        setSubmissionError("The resident could not be updated. Correct the highlighted fields and try again.");
+        focusFirstInvalid();
+      } else {
+        setSubmissionError(getApiErrorMessage(err, "Failed to update resident."));
+      }
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const clearFieldError = (key) => {
+    setErrors((current) => key.includes(".")
+      ? { ...current, [key]: undefined }
+      : Object.fromEntries(Object.entries(current).filter(([field]) => !field.startsWith(`${key}.`))));
+    setSubmissionError("");
   };
 
   if (loading) {
@@ -137,6 +171,19 @@ export default function EditResident() {
         Name, date of birth, gender, and village are identity fields and cannot be
         changed after creation. Contact details and records can be updated.
       </p>
+
+      {submissionError && (
+        <div className="alert alert-danger" role="alert" aria-live="assertive">
+          <p className="mb-1">{submissionError}</p>
+          {Object.entries(errors).filter(([, message]) => message).length > 0 && (
+            <ul className="mb-0">
+              {Object.entries(errors).filter(([, message]) => message).map(([key, message]) => (
+                <li key={key}>{formatApiFieldLabel(key)}: {message}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate ref={formRef}>
         <div className="card mb-4">
@@ -217,9 +264,9 @@ export default function EditResident() {
           </div>
         </div>
 
-        <EducationSection qualifications={qualificationData} rows={education} setRows={setEducation} />
-        <ExperienceSection rows={experience} setRows={setExperience} />
-        <SkillsSection rows={skills} setRows={setSkills} />
+        <EducationSection qualifications={qualificationData} rows={education} setRows={setEducation} errors={errors} onFieldChange={clearFieldError} />
+        <ExperienceSection rows={experience} setRows={setExperience} errors={errors} onFieldChange={clearFieldError} />
+        <SkillsSection rows={skills} setRows={setSkills} errors={errors} onFieldChange={clearFieldError} />
 
         <button type="submit" className="btn btn-primary w-100" disabled={submitting}>
           {submitting ? "Saving…" : "Update Resident"}

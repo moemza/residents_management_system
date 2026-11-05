@@ -1,8 +1,22 @@
-export default function ExperienceSection({ rows, setRows }) {
+export default function ExperienceSection({ rows, setRows, errors = {}, onFieldChange }) {
   const empty = { company: "", position: "", years: "" };
 
   const update = (i, field, value) =>
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+  const fieldProps = (i, field, label) => {
+    const key = `experiences.${i}.${field}`;
+    const errorId = `experience-${i}-${field}-error`;
+    return {
+      "aria-label": `${label} for experience record ${i + 1}`,
+      "aria-invalid": Boolean(errors[key]),
+      "aria-describedby": errors[key] ? errorId : undefined,
+      className: `form-control ${errors[key] ? "is-invalid" : ""}`,
+      onChange: (event) => {
+        update(i, field, event.target.value);
+        onFieldChange?.(key);
+      },
+    };
+  };
 
   return (
     <section className="card mb-4" aria-labelledby="experience-heading">
@@ -23,40 +37,40 @@ export default function ExperienceSection({ rows, setRows }) {
           <div key={i} className="row g-2 mb-3 align-items-center">
             <div className="col-md-4">
               <input
-                className="form-control"
-                aria-label={`Company for experience record ${i + 1}`}
+                {...fieldProps(i, "company", "Company")}
                 maxLength={200}
                 placeholder="Company"
-                value={row.company}
-                onChange={(e) => update(i, "company", e.target.value)}
+                value={row.company ?? ""}
               />
+              {errors[`experiences.${i}.company`] && <div id={`experience-${i}-company-error`} className="invalid-feedback">{errors[`experiences.${i}.company`]}</div>}
             </div>
             <div className="col-md-4">
               <input
-                className="form-control"
-                aria-label={`Position for experience record ${i + 1}`}
+                {...fieldProps(i, "position", "Position")}
                 maxLength={200}
                 placeholder="Position"
-                value={row.position}
-                onChange={(e) => update(i, "position", e.target.value)}
+                value={row.position ?? ""}
               />
+              {errors[`experiences.${i}.position`] && <div id={`experience-${i}-position-error`} className="invalid-feedback">{errors[`experiences.${i}.position`]}</div>}
             </div>
             <div className="col-md-3">
               <input
-                className="form-control"
-                aria-label={`Years for experience record ${i + 1}`}
+                {...fieldProps(i, "years", "Years")}
                 maxLength={20}
                 placeholder="Years"
-                value={row.years}
-                onChange={(e) => update(i, "years", e.target.value)}
+                value={row.years ?? ""}
               />
+              {errors[`experiences.${i}.years`] && <div id={`experience-${i}-years-error`} className="invalid-feedback">{errors[`experiences.${i}.years`]}</div>}
             </div>
             <div className="col-md-1">
               <button
                 type="button"
                 className="btn btn-danger btn-sm w-100"
                 aria-label={`Remove experience record ${i + 1}`}
-                onClick={() => setRows((p) => p.filter((_, idx) => idx !== i))}
+                onClick={() => {
+                  setRows((p) => p.filter((_, idx) => idx !== i));
+                  onFieldChange?.("experiences");
+                }}
               >
                 ✖
               </button>

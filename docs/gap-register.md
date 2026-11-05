@@ -1,12 +1,13 @@
 # Gap Register — Assessment and Remediation Record
 
 **Assessment date:** 2026-10-31
-**Last verification:** 2026-11-03
+**Last verification:** 2026-11-05
 **Branch:** `feature/react-frontend-migration`
 **Baseline commit:** `32ab01e`
-**Status:** Implementation and independent security review complete on the
-feature branch. Tests, frontend checks, Docker build, and isolated smoke test
-passed. No production data was used; no deployment or access changes were made.
+**Status:** The secure administrator access/UI phase was independently
+reviewed. The 2026-11-05 resident capture and browse/search phase is implemented
+and independently reviewed. No production data was used; no deployment or
+access changes were made.
 
 Severity: **P0** = critical, **P1** = high, **P2** = medium, **P3** = low.
 Status: **Fixed**, **Partially fixed**, **Remaining**, **Decision required**, or
@@ -232,3 +233,67 @@ Credentialed CORS rejects wildcard origins.
 production access changes, migration of a real database, or tests against real
 resident data. Read auditing and distributed login throttling remain
 limitations; deploy with HTTPS and explicit trusted CORS origins.
+
+## 2026-11-05 resident capture and browse/search phase
+
+**Branch:** `feature/react-frontend-migration`
+**Status:** implementation and independent security/correctness reviews complete;
+local validation recorded below. Publication awaits successful feature-branch CI.
+
+**Product and API decisions:** Existing resident fields and the current
+`ResidentIn` schema are reused; this phase adds no columns or migrations.
+`GET /api/residents` accepts optional `name`, `village`, `qualification`, and
+`skill` filters. Nonblank filters combine with AND; name is a
+case-insensitive partial match against either first or last name, and the other
+filters use case-insensitive partial matches. Qualification-field-to-known-name
+mapping is retained from the existing `/api/search` behavior. Child-record
+criteria use existence predicates so multiple matching qualifications or
+skills do not duplicate residents or inflate `X-Total-Count`.
+
+The list endpoint now accepts a fixed sort-field whitelist and `asc`/`desc`;
+sort ties on non-ID fields break by ascending resident ID. Count is computed
+before pagination; page size remains capped at 500. Invalid query, sort, or
+pagination values return `422`. The existing single-category `/api/search`
+contract remains available. Browse and search routes share one browser/filter
+implementation; applying a filter or changing sort returns to page one, while
+reset clears filters, sort, and page.
+
+Add/edit forms continue to use existing personal and nested
+qualification/experience/skill fields. Suggestions do not restrict gender,
+village, or qualification text to current reference lists; phone values have
+no invented format rule. Optional secondary phone and email may be blank.
+POST and PUT use the same server schema validation; invalid server locations
+are shown beside their fields and in an announced summary, and failed submits
+retain entered form state. Successful submits return to the resident list with
+its success notice. Existing qualification, experience, and skill records are
+still replaced as a complete submitted set on edit, matching the prior PUT
+contract.
+
+**Focused regression coverage:** combined AND filtering; first/last-name,
+village, qualification-field/name, and skill matching; multiple matching child
+rows and distinct totals; deterministic sort ties; empty and out-of-range
+pages; invalid filter/sort parameters; unauthorized filter/reference access;
+legacy search workflow; accepted nonstandard phone/gender/qualification text;
+optional blank contacts; and invalid nested edit locations without changing
+stored values. Frontend helper tests cover nested server-error mapping and
+readable field labels.
+
+**Validation:**
+
+- `.venv/bin/python -m pytest tests/ --cov=app --cov-report=term-missing -q`
+  — **191 passed**, **92% total application coverage**. `TMPDIR` pointed to a
+  project-local isolated test workspace; the fixture database was synthetic and
+  the workspace was removed after the run.
+- `cd frontend && npm test` — **11 passed**.
+- `cd frontend && npm run lint` — passed without warnings.
+- `cd frontend && npm run build` — passed.
+- `git diff --check` — passed.
+
+The coordinator repeated the full backend suite and frontend tests, lint, and
+build with the same passing results. Independent security review found no
+security vulnerabilities in the reviewed changes; independent correctness
+review found no significant issues.
+
+No browser-driven or manual browser verification was performed. No production
+database was opened or queried, and no deployment, access change, migration, or
+PR action was performed.

@@ -77,6 +77,24 @@ def test_user_er03_invalid_email_rejected_on_update(client):
     assert response.status_code == 422
 
 
+def test_invalid_nested_edit_returns_field_location_without_changing_data(client):
+    resident = _create(client)
+    payload = {
+        **RESIDENT_PAYLOAD,
+        "cellphone_no": "new phone value",
+        "qualifications": [{**RESIDENT_PAYLOAD["qualifications"][0], "name": ""}],
+    }
+
+    response = client.put(f"/api/residents/{resident['id']}", json=payload)
+    errors = response.json()["detail"]
+    current = client.get(f"/api/residents/{resident['id']}").json()
+
+    assert response.status_code == 422
+    assert any(error["loc"] == ["body", "qualifications", 0, "name"] for error in errors)
+    assert current["cellphone_no"] == resident["cellphone_no"]
+    assert current["qualifications"][0]["name"] == resident["qualifications"][0]["name"]
+
+
 # ── US-ER-04: Edit existing records ─────────────────────────────────────────
 
 def test_user_er04_update_qualification(client):
